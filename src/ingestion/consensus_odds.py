@@ -162,6 +162,10 @@ class StatPickClient(_RetryingClient):
     def get_slate(self) -> dict:
         return self._get_json(f"/api/{self.sport}/prop-pages/slate")
 
+    def get_player_prop_page(self, player_slug: str) -> dict:
+        """All stat-market lines for one player in a single call."""
+        return self._get_json(f"/api/{self.sport}/prop-pages/player/{player_slug}")
+
 
 class UnderdogClient(_RetryingClient):
     """Zero-auth fallback client for Underdog public over/under lines."""
@@ -230,7 +234,12 @@ class ConsensusOddsIngestion:
         errors: dict[str, str] = {}
         for name, fetch, ingest in chain:
             try:
-                written = ingest(fetch())
+                payload = fetch()
+                written = ingest(payload)
+                if name == STATPICK_BOOKMAKER and written:
+                    # Slate only carries each player's headline prop; pull
+                    # per-player prop pages for full-market coverage.
+                    written += self._enrich_statpick(payload)
                 if written:
                     result = {"source": name, "written": written}
                     if errors:
@@ -271,7 +280,17 @@ class ConsensusOddsIngestion:
                     if not stat:
                         continue
                     market = _statpick_market(stat.get("statSlug") or stat.get("slug"))
-                    line = _to_float(stat.get("line"))
+                    # Slate headlines carry flat fields; prop-page stats nest
+                    # them under a 'line' object.
+                    line_obj = stat.get("line")
+                    if isinstance(line_obj, dict):
+                        line = _to_float(line_obj.get("line"))
+                        over = line_obj.get("overOdds")
+                        under = line_obj.get("underOdds")
+                    else:
+                        line = _to_float(line_obj)
+                        over = stat.get("overOdds")
+                        under = stat.get("underOdds")
                     if not player_name or market is None or line is None:
                         continue
                     written += self._write_line(
@@ -280,8 +299,8 @@ class ConsensusOddsIngestion:
                         player_name=player_name,
                         market=market,
                         line=line,
-                        over_price=stat.get("overOdds"),
-                        under_price=stat.get("underOdds"),
+                        over_price=over,
+                        under_price=under,
                         snapshot=snapshot,
                         commence_time=commence,
                         game_date=slate_date,
@@ -292,6 +311,79 @@ class ConsensusOddsIngestion:
                         player_id=nba_id,
                     )
         self.db.log_ingestion("consensus_odds.statpick", written)
+        return written
+
+    def ingest_statpick_prop_page(
+        self, payload: dict, snapshot_time: Optional[str] = None
+    ) -> int:
+        """Persist a single player's prop-page (all stat markets).
+
+        The page's `nextGame` supplies event context — gameUrl carries the
+        event id, opponentAbbr + isHome reconstruct the matchup.
+        """
+        from src.ingestion.db import utcnow_iso
+
+        snapshot = snapshot_time or self._snapshot_time or utcnow_iso()
+        data = payload.get("data", payload)
+        player = data.get("player") or {}
+        nxt = data.get("nextGame") or {}
+
+        player_name = player.get("playerName")
+        nba_id = _nba_id_from_headshot(player.get("headshotUrl"))
+        team_abbr = player.get("teamAbbr")
+        opp_abbr = nxt.get("opponentAbbr")
+        is_home = bool(nxt.get("isHome"))
+        home_abbr = team_abbr if is_home else opp_abbr
+        away_abbr = opp_abbr if is_home else team_abbr
+        m = re.search(r"/games/nba/(\d+)", str(nxt.get("gameUrl") or ""))
+        event_id = f"sp-{m.group(1)}" if m else f"sp-{player.get('playerSlug')}"
+        game_date = str(nxt.get("date") or "")[:10] or None
+
+        written = 0
+        for stat in data.get("stats", []):
+            market = _statpick_market(stat.get("statSlug"))
+            line_obj = stat.get("line") or {}
+            line = _to_float(line_obj.get("line"))
+            if not player_name or market is None or line is None:
+                continue
+            written += self._write_line(
+                bookmaker=STATPICK_BOOKMAKER,
+                event_id=event_id,
+                player_name=player_name,
+                market=market,
+                line=line,
+                over_price=line_obj.get("overOdds"),
+                under_price=line_obj.get("underOdds"),
+                snapshot=snapshot,
+                commence_time=nxt.get("dateAndTime"),
+                game_date=game_date,
+                home_abbr=home_abbr,
+                away_abbr=away_abbr,
+                team_abbr=team_abbr,
+                position=player.get("position"),
+                player_id=nba_id,
+            )
+        return written
+
+    def _enrich_statpick(self, slate_payload: dict) -> int:
+        """Fetch every slate player's prop page for full-market coverage."""
+        if self.statpick is None or not hasattr(self.statpick, "get_player_prop_page"):
+            return 0
+        data = slate_payload.get("data", slate_payload)
+        slugs = {
+            p.get("playerSlug")
+            for g in data.get("games", [])
+            for p in g.get("players", [])
+            if p.get("playerSlug")
+        }
+        written = 0
+        for slug in sorted(slugs):
+            try:
+                written += self.ingest_statpick_prop_page(
+                    self.statpick.get_player_prop_page(slug)
+                )
+            except Exception:
+                continue  # one bad page must not sink the board
         return written
 
     # --- PrizePicks ---------------------------------------------------------
