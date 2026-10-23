@@ -25,7 +25,7 @@ GAME_DATE = "2025-10-22"
 
 
 def _seed_slate_db(db):
-    """Player averaging 12 REB in 30 MIN; consensus line REB 9.5 -110."""
+    """Player averaging 14 REB in 30 MIN; consensus line REB 9.5 -110."""
     db.upsert_team(P_TEAM, "TST")
     db.upsert_team(P_OPP, "OPP")
     db.upsert_player(P_ID, "Board Man", team_id=P_TEAM, position="C")
@@ -40,7 +40,7 @@ def _seed_slate_db(db):
                 "game_date": d.isoformat(),
                 "minutes": 30.0,
                 "pts": 18,
-                "reb": 12,
+                "reb": 14,
                 "ast": 4,
                 "fg3m": 1,
                 "fga": 12,
@@ -90,8 +90,8 @@ def test_generate_plays_end_to_end(slate_db):
     assert play["is_home"] is True
     assert play["stat"] == "reb"
     assert play["line"] == 9.5
-    # 12 reb/game on ~30 min -> mean ~12, over 9.5 strongly favored
-    assert play["model_mean"] == pytest.approx(12.0, abs=0.5)
+    # 14 reb/game on ~30 min, shrunk toward line: (12*14 + 6*9.5)/18 = 12.5
+    assert play["model_mean"] == pytest.approx(12.5, abs=0.5)
     assert play["p_over"] > 0.6
     assert play["recommended_side"] == "over"
     assert play["recommended_ev_pct"] > 5.0
@@ -131,8 +131,8 @@ def test_generate_plays_combo_stat(slate_db):
     plays = {p["market"]: p for p in SlateGenerator(slate_db).generate_plays(GAME_DATE)}
     pra = plays["player_points_rebounds_assists"]
     assert pra["stat"] == "pra"
-    # PRA mean ≈ 18 + 12 + 4 = 34
-    assert pra["model_mean"] == pytest.approx(34.0, abs=1.0)
+    # PRA mean ≈ 18 + 14 + 4 = 36 -> shrunk (12*36 + 6*30.5)/18 ≈ 34.2
+    assert pra["model_mean"] == pytest.approx(34.2, abs=1.0)
 
 
 def test_generate_plays_skips_unknown_players(slate_db):

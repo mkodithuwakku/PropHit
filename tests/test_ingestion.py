@@ -10,6 +10,7 @@ from src.ingestion.consensus_odds import (
     CONSENSUS_BOOKMAKER,
     ConsensusOddsIngestion,
     PrizePicksClient,
+    StatPickClient,
     UnderdogClient,
 )
 from src.ingestion.injuries import parse_injury_entries
@@ -312,6 +313,78 @@ def test_ingest_underdog_fixture(db, load_fixture):
     assert jokic["game_date"] == "2025-10-23"
 
 
+def test_ingest_statpick_fixture(db, load_fixture):
+    payload = load_fixture("statpick_slate.json")
+    written = ConsensusOddsIngestion(db).ingest_statpick(
+        payload, snapshot_time=SNAPSHOT
+    )
+
+    # 4 valid headline props (null line skipped) x book+consensus = 8
+    assert written == 8
+
+    giannis = db.query_one("""
+        SELECT * FROM fact_consensus_lines
+        WHERE player_name = 'Giannis Antetokounmpo' AND is_consensus = 1
+        """)
+    assert giannis["market"] == "player_points"
+    assert giannis["line"] == 28.5
+    assert giannis["over_price"] == -122  # real consensus prices, not flat
+    assert giannis["under_price"] == -108
+    assert giannis["home_team_abbr"] == "MIA"
+    assert giannis["away_team_abbr"] == "DET"
+    assert giannis["game_date"] == "2026-10-23"
+    assert giannis["event_id"] == "sp-21717940"
+    assert giannis["player_id"] == 203507  # real NBA id from headshotUrl
+
+    vuc = db.query_one("""
+        SELECT market FROM fact_consensus_lines
+        WHERE player_name = 'Nikola Vucevic' AND is_consensus = 1
+        """)
+    assert vuc["market"] == "player_points_rebounds_assists"
+
+    # stub (no headshot) still resolves via normalized name
+    bam = db.query_one(
+        "SELECT player_id FROM fact_consensus_lines "
+        "WHERE player_name = 'Bam Adebayo' AND is_consensus = 1"
+    )
+    assert bam["player_id"] == db.player_id_for_name("Bam Adebayo")
+
+
+def test_morning_pull_prefers_statpick(db, load_fixture):
+    slate = load_fixture("statpick_slate.json")
+    projections = load_fixture("prizepicks_projections.json")
+    sp_session = _FakeSession([slate])
+    pp_session = _FakeSession([projections])
+
+    result = ConsensusOddsIngestion(
+        db,
+        statpick=StatPickClient(session=sp_session, sleep_fn=lambda s: None),
+        primary=PrizePicksClient(session=pp_session, sleep_fn=lambda s: None),
+    ).ingest_morning_pull()
+
+    assert result["source"] == "statpick"
+    assert result["written"] == 8
+    assert len(pp_session.calls) == 0  # downstream sources untouched
+
+
+def test_morning_pull_chain_falls_through_failures(db, load_fixture):
+    projections = load_fixture("prizepicks_projections.json")
+    sp_session = _FakeSession([], fail_first=10)
+    pp_session = _FakeSession([projections])
+
+    result = ConsensusOddsIngestion(
+        db,
+        statpick=StatPickClient(
+            max_retries=2, session=sp_session, sleep_fn=lambda s: None
+        ),
+        primary=PrizePicksClient(session=pp_session, sleep_fn=lambda s: None),
+    ).ingest_morning_pull()
+
+    assert result["source"] == "prizepicks"
+    assert result["written"] == 14
+    assert "statpick" in result["skipped_sources"]
+
+
 # --- clients with injected session -------------------------------------------
 
 
@@ -385,7 +458,7 @@ def test_morning_pull_falls_back_to_underdog(db, load_fixture):
 
     assert result["source"] == "underdog"
     assert result["written"] == 4
-    assert result["primary_error"]
+    assert "prizepicks" in result["skipped_sources"]
     assert len(fallback_session.calls) == 1
     assert fallback_session.calls[0]["url"].endswith("/beta/v3/over_under_lines")
 

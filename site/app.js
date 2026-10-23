@@ -43,6 +43,10 @@ const STAT_LABELS = {
   pra: "PRA",
   pr: "P+R",
   pa: "P+A",
+  ra: "R+A",
+  blk: "BLK",
+  stl: "STL",
+  tov: "TOV",
 };
 
 const teamColor = (abbr) => TEAM_META[abbr]?.color || "#8b7fd4";
@@ -101,9 +105,11 @@ function cardHtml(play) {
       : play.recommended_side === "over"
         ? "Over"
         : null;
-  const chipText = side
-    ? `${side} ${fmtSigned(evShown)}%`
-    : `${fmtSigned(evShown)}% EV`;
+  const chipText = play.low_confidence
+    ? "LOW CONF"
+    : side
+      ? `${side} ${fmtSigned(evShown)}%`
+      : `${fmtSigned(evShown)}% EV`;
   const edge = play.model_edge ?? 0;
   const arrow = edge >= 0 ? "up" : "down";
   const pOver = Math.max(0, Math.min(100, (play.p_over || 0) * 100));
@@ -114,6 +120,13 @@ function cardHtml(play) {
   const f = play.factors || {};
   const facts = [
     ["Proj. Min", f.projected_minutes],
+    ["Sample", play.history_games != null ? `${play.history_games} g` : null],
+    [
+      "Confidence",
+      play.low_confidence
+        ? `Low — ${(play.confidence_reasons || []).join(", ")}`
+        : null,
+    ],
     ["DvP", f.dvp_label],
     ["Rest", f.rest_label],
     ["Altitude", f.altitude ? "Yes" : null],
@@ -164,7 +177,7 @@ function cardHtml(play) {
           <span>${play.opponent_abbr || ""}</span>
         </div>
       </div>
-      <span class="chip ${evChipClass(evShown)}">${chipText}</span>
+      <span class="chip ${play.low_confidence ? "ev-caution" : evChipClass(evShown)}">${chipText}</span>
     </div>
     <div class="stat-row">
       <span class="stat-badge ${play.stat}">${stat}</span>
@@ -208,6 +221,7 @@ function renderSlate(slate) {
   if (slate.demo) {
     document.getElementById("demo-badge").hidden = false;
   }
+  renderModelRecord(slate.model_stats);
 
   playsEl.innerHTML = slate.plays.length
     ? slate.plays.map(cardHtml).join("")
@@ -215,6 +229,33 @@ function renderSlate(slate) {
   applyFilter(
     document.querySelector(".tab.active")?.dataset.filter || "value",
   );
+}
+
+function renderModelRecord(stats) {
+  const el = document.getElementById("model-record");
+  if (!el || !stats) return;
+  const r = stats.record || {};
+  const a = stats.accuracy || {};
+  const parts = [];
+  if (r.bets > 0) {
+    const roi = fmtSigned(r.roi_pct);
+    const cls = r.units >= 0 ? "pos" : "neg";
+    parts.push(
+      `<span class="rec-chip ${cls}">${r.wins}-${r.losses}` +
+        `${r.pushes ? `-${r.pushes}` : ""} · ${fmtSigned(r.units)}u ` +
+        `(${roi}% ROI)</span>`,
+    );
+  }
+  if (a.favored_hit_rate != null) {
+    parts.push(
+      `<span class="rec-chip">${a.favored_hit_rate}% favored accuracy ` +
+        `<i>n=${a.sample}</i></span>`,
+    );
+  }
+  if (parts.length) {
+    el.innerHTML = `<span class="rec-label">MODEL RECORD</span>${parts.join("")}`;
+    el.hidden = false;
+  }
 }
 
 async function loadSlate() {

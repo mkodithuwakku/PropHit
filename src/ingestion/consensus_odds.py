@@ -24,9 +24,42 @@ import requests
 from src.ingestion.db import ProphitDB
 
 CONSENSUS_BOOKMAKER = "CONSENSUS"
+STATPICK_BOOKMAKER = "statpick"
 PRIZEPICKS_BOOKMAKER = "prizepicks"
 UNDERDOG_BOOKMAKER = "underdog"
 FLAT_PRICE = -110  # PrizePicks-style flat payout -> -110 equivalent
+
+STATPICK_STAT_TO_MARKET = {
+    "points": "player_points",
+    "rebounds": "player_rebounds",
+    "assists": "player_assists",
+    "threes": "player_threes",
+    "steals": "player_steals",
+    "blocks": "player_blocks",
+    "turnovers": "player_turnovers",
+    "points-rebounds": "player_points_rebounds",
+    "points-assists": "player_points_assists",
+    "points-rebounds-assists": "player_points_rebounds_assists",
+    "rebounds-assists": "player_rebounds_assists",
+}
+
+
+def _statpick_market(slug: Optional[str]) -> Optional[str]:
+    if not slug:
+        return None
+    if slug in STATPICK_STAT_TO_MARKET:
+        return STATPICK_STAT_TO_MARKET[slug]
+    clean = re.sub(r"[^a-z0-9]+", "_", slug.strip().lower()).strip("_")
+    return f"player_{clean}" if clean else None
+
+
+def _nba_id_from_headshot(url: Optional[str]) -> Optional[int]:
+    """statpick headshots embed the official NBA player id."""
+    if not url:
+        return None
+    m = re.search(r"/(\d+)\.[a-zA-Z]+$", str(url))
+    return int(m.group(1)) if m else None
+
 
 PP_STAT_TYPE_TO_MARKET = {
     "Points": "player_points",
@@ -114,6 +147,22 @@ class PrizePicksClient(_RetryingClient):
         )
 
 
+class StatPickClient(_RetryingClient):
+    """Zero-auth client for the statpick.ai public prop-lines API.
+
+    statpick publishes documented, unauthenticated JSON endpoints that
+    aggregate lines across ~5 sportsbooks — designed for programmatic
+    access, unlike bot-protected sportsbook endpoints.
+    """
+
+    def __init__(self, sport: str = "nba", **kwargs):
+        super().__init__("https://api.statpick.ai", **kwargs)
+        self.sport = sport
+
+    def get_slate(self) -> dict:
+        return self._get_json(f"/api/{self.sport}/prop-pages/slate")
+
+
 class UnderdogClient(_RetryingClient):
     """Zero-auth fallback client for Underdog public over/under lines."""
 
@@ -130,11 +179,13 @@ class ConsensusOddsIngestion:
     def __init__(
         self,
         db: ProphitDB,
+        statpick: Optional["StatPickClient"] = None,
         primary: Optional[PrizePicksClient] = None,
         fallback: Optional[UnderdogClient] = None,
         snapshot_time: Optional[str] = None,
     ):
         self.db = db
+        self.statpick = statpick
         self.primary = primary
         self.fallback = fallback
         self._snapshot_time = snapshot_time
@@ -142,32 +193,106 @@ class ConsensusOddsIngestion:
     # --- live pull ---------------------------------------------------------
 
     def ingest_morning_pull(self) -> dict:
-        """Daily pull: PrizePicks primary, Underdog fallback on failure."""
-        if self.primary is None and self.fallback is None:
-            raise ValueError("ingest_morning_pull requires a client")
-        if self.primary is not None:
-            try:
-                payload = self.primary.get_projections()
-                return {
-                    "source": PRIZEPICKS_BOOKMAKER,
-                    "written": self.ingest_prizepicks(payload),
-                }
-            except Exception as exc:
-                if self.fallback is None:
-                    raise
-                primary_error = str(exc)
-        else:
-            primary_error = "no primary client"
+        """Daily pull across the zero-auth source chain.
 
-        if self.fallback is None:
-            raise RuntimeError(f"primary failed: {primary_error}")
-        payload = self.fallback.get_over_under_lines()
-        result = {
-            "source": UNDERDOG_BOOKMAKER,
-            "written": self.ingest_underdog(payload),
-            "primary_error": primary_error,
-        }
-        return result
+        Order: statpick.ai (designed for programmatic access) ->
+        PrizePicks public projections -> Underdog public lines. The first
+        source returning a non-empty board wins.
+        """
+        chain = []
+        if self.statpick is not None:
+            chain.append(
+                (
+                    STATPICK_BOOKMAKER,
+                    self.statpick.get_slate,
+                    self.ingest_statpick,
+                )
+            )
+        if self.primary is not None:
+            chain.append(
+                (
+                    PRIZEPICKS_BOOKMAKER,
+                    self.primary.get_projections,
+                    self.ingest_prizepicks,
+                )
+            )
+        if self.fallback is not None:
+            chain.append(
+                (
+                    UNDERDOG_BOOKMAKER,
+                    self.fallback.get_over_under_lines,
+                    self.ingest_underdog,
+                )
+            )
+        if not chain:
+            raise ValueError("ingest_morning_pull requires a client")
+
+        errors: dict[str, str] = {}
+        for name, fetch, ingest in chain:
+            try:
+                written = ingest(fetch())
+                if written:
+                    result = {"source": name, "written": written}
+                    if errors:
+                        result["skipped_sources"] = errors
+                    return result
+                errors[name] = "empty board"
+            except Exception as exc:
+                errors[name] = str(exc)
+        raise RuntimeError(f"all consensus sources failed: {errors}")
+
+    # --- statpick.ai ---------------------------------------------------------
+
+    def ingest_statpick(
+        self, payload: dict, snapshot_time: Optional[str] = None
+    ) -> int:
+        """Persist a statpick.ai prop-pages slate payload."""
+        from src.ingestion.db import utcnow_iso
+
+        snapshot = snapshot_time or self._snapshot_time or utcnow_iso()
+        data = payload.get("data", payload)
+        # statpick's slate date is the NBA evening slate; games tipping
+        # after midnight UTC still belong to it.
+        slate_date = str(data.get("date") or "")[:10] or None
+
+        written = 0
+        for game in data.get("games", []):
+            home_abbr = (game.get("homeTeam") or {}).get("abbreviation")
+            away_abbr = (game.get("awayTeam") or {}).get("abbreviation")
+            event_id = f"sp-{game.get('gameId')}"
+            commence = game.get("dateAndTime")
+
+            for player in game.get("players", []):
+                player_name = player.get("playerName")
+                team_abbr = player.get("teamAbbr")
+                nba_id = _nba_id_from_headshot(player.get("headshotUrl"))
+                stats = player.get("stats") or [player.get("headline")]
+                for stat in stats:
+                    if not stat:
+                        continue
+                    market = _statpick_market(stat.get("statSlug") or stat.get("slug"))
+                    line = _to_float(stat.get("line"))
+                    if not player_name or market is None or line is None:
+                        continue
+                    written += self._write_line(
+                        bookmaker=STATPICK_BOOKMAKER,
+                        event_id=event_id,
+                        player_name=player_name,
+                        market=market,
+                        line=line,
+                        over_price=stat.get("overOdds"),
+                        under_price=stat.get("underOdds"),
+                        snapshot=snapshot,
+                        commence_time=commence,
+                        game_date=slate_date,
+                        home_abbr=home_abbr,
+                        away_abbr=away_abbr,
+                        team_abbr=team_abbr,
+                        position=player.get("position"),
+                        player_id=nba_id,
+                    )
+        self.db.log_ingestion("consensus_odds.statpick", written)
+        return written
 
     # --- PrizePicks ---------------------------------------------------------
 
@@ -330,15 +455,22 @@ class ConsensusOddsIngestion:
         under_price: Optional[int],
         snapshot: str,
         commence_time: Optional[str],
-        home_abbr: Optional[str],
-        away_abbr: Optional[str],
-        team_abbr: Optional[str],
+        game_date: Optional[str] = None,
+        home_abbr: Optional[str] = None,
+        away_abbr: Optional[str] = None,
+        team_abbr: Optional[str] = None,
         position: Optional[str] = None,
+        player_id: Optional[int] = None,
     ) -> int:
         """Write the bookmaker row + the CONSENSUS mirror row."""
-        player_id = self.db.player_id_for_name(player_name)
-        if player_id is None:
-            player_id = self.db.get_or_create_player_id(player_name)
+        if player_id is not None:
+            # Official NBA id supplied (e.g. statpick headshotUrl) —
+            # upsert auto-promotes any pre-existing name stub.
+            self.db.upsert_player(player_id, player_name, position=position)
+        else:
+            player_id = self.db.player_id_for_name(player_name)
+            if player_id is None:
+                player_id = self.db.get_or_create_player_id(player_name)
         if team_abbr:
             team_id = self.db.team_id_for_abbr(team_abbr)
             self.db.execute(
@@ -353,7 +485,7 @@ class ConsensusOddsIngestion:
 
         base = {
             "event_id": event_id,
-            "game_date": (commence_time or "")[:10] or None,
+            "game_date": game_date or (commence_time or "")[:10] or None,
             "home_team_abbr": home_abbr,
             "away_team_abbr": away_abbr,
             "player_id": player_id,

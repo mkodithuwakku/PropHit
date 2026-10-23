@@ -1,0 +1,95 @@
+{
+  "success": true,
+  "data": {
+    "date": "2026-10-23",
+    "games": [
+      {
+        "gameId": 21717940,
+        "gameUrl": "/games/nba/21717940/detroit-pistons-miami-heat",
+        "dateAndTime": "2026-10-24T00:00:00.000Z",
+        "homeTeam": {"id": 16, "name": "Heat", "abbreviation": "MIA"},
+        "awayTeam": {"id": 18, "name": "Pistons", "abbreviation": "DET"},
+        "players": [
+          {
+            "playerSlug": "giannis-antetokounmpo",
+            "playerName": "Giannis Antetokounmpo",
+            "teamAbbr": "MIA",
+            "position": "PF",
+            "headshotUrl": "https://cdn.nba.com/headshots/nba/latest/1040x760/203507.png",
+            "headline": {
+              "statSlug": "points",
+              "displayName": "Points",
+              "line": 28.5,
+              "overOdds": -122,
+              "underOdds": -108
+            },
+            "statCount": 6
+          },
+          {
+            "playerSlug": "cade-cunningham",
+            "playerName": "Cade Cunningham",
+            "teamAbbr": "DET",
+            "position": "PG",
+            "headshotUrl": "https://cdn.nba.com/headshots/nba/latest/1040x760/1630595.png",
+            "headline": {
+              "statSlug": "assists",
+              "displayName": "Assists",
+              "line": 8.5,
+              "overOdds": -115,
+              "underOdds": -115
+            },
+            "statCount": 5
+          },
+          {
+            "playerSlug": "bam-adebayo",
+            "playerName": "Bam Adebayo",
+            "teamAbbr": "MIA",
+            "headline": {
+              "statSlug": "rebounds",
+              "displayName": "Rebounds",
+              "line": 9.5,
+              "overOdds": -110,
+              "underOdds": -120
+            },
+            "statCount": 4
+          }
+        ]
+      },
+      {
+        "gameId": 21717941,
+        "gameUrl": "/games/nba/21717941/chicago-bulls-milwaukee-bucks",
+        "dateAndTime": "2026-10-23T20:00:00.000Z",
+        "homeTeam": {"id": 17, "name": "Bucks", "abbreviation": "MIL"},
+        "awayTeam": {"id": 5, "name": "Bulls", "abbreviation": "CHI"},
+        "players": [
+          {
+            "playerSlug": "nikola-vucevic",
+            "playerName": "Nikola Vucevic",
+            "teamAbbr": "CHI",
+            "headline": {
+              "statSlug": "points-rebounds-assists",
+              "displayName": "PRA",
+              "line": 29.5,
+              "overOdds": -110,
+              "underOdds": -110
+            },
+            "statCount": 5
+          },
+          {
+            "playerSlug": "mystery-man",
+            "playerName": "Mystery Man",
+            "teamAbbr": "MIL",
+            "headline": {
+              "statSlug": "points",
+              "displayName": "Points",
+              "line": null,
+              "overOdds": -110,
+              "underOdds": -110
+            },
+            "statCount": 1
+          }
+        ]
+      }
+    ]
+  }
+}

@@ -99,6 +99,49 @@ body {
   background: var(--edge-neutral);
 }
 
+.model-record {
+  display: flex;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 8px;
+}
+
+.rec-label {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
+}
+
+.rec-chip {
+  padding: 3px 10px;
+  border-radius: 999px;
+  font-size: 0.68rem;
+  font-weight: 700;
+  background: rgba(139, 127, 212, 0.14);
+  border: 1px solid rgba(139, 127, 212, 0.35);
+  color: var(--text-primary);
+}
+
+.rec-chip i {
+  font-style: normal;
+  color: var(--text-muted);
+  font-weight: 500;
+}
+
+.rec-chip.pos {
+  background: rgba(47, 191, 113, 0.14);
+  border-color: rgba(47, 191, 113, 0.4);
+  color: var(--edge-positive);
+}
+
+.rec-chip.neg {
+  background: rgba(229, 72, 77, 0.14);
+  border-color: rgba(229, 72, 77, 0.4);
+  color: var(--edge-caution);
+}
+
 /* --- filter tabs --- */
 .filter-tabs {
   display: flex;

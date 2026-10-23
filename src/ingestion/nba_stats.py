@@ -140,14 +140,19 @@ class NBAStatsClient:
         return data.get("PlayerGameLog", [])
 
     def get_league_game_log(
-        self, season: str, season_type: str = "Regular Season"
+        self,
+        season: str,
+        season_type: str = "Regular Season",
+        date_from: Optional[str] = None,
     ) -> list[dict]:
-        data = self._call(
-            "LeagueGameLog",
-            season=season,
-            season_type_all_star=season_type,
-            player_or_team_abbreviation="P",
-        )
+        params = {
+            "season": season,
+            "season_type_all_star": season_type,
+            "player_or_team_abbreviation": "P",
+        }
+        if date_from:
+            params["date_from_nullable"] = date_from
+        data = self._call("LeagueGameLog", **params)
         return data.get("LeagueGameLog", [])
 
     def get_league_dash_team_defense(

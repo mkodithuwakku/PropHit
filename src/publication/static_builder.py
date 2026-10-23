@@ -50,6 +50,7 @@ class SlateGenerator:
         db: ProphitDB,
         min_ev_pct: float = 5.0,
         history_games: int = 20,
+        prior_games: float = 6.0,
     ):
         self.db = db
         self.store = FeatureStore(db)
@@ -58,23 +59,31 @@ class SlateGenerator:
         self.ladder = MilestoneEngine()
         self.history_games = history_games
         self.min_ev_pct = min_ev_pct
+        # Empirical-Bayes shrinkage: with thin box-score history the market
+        # line is the best prior, so model means are pulled toward it.
+        # weight_model = n / (n + prior_games); at n=20 the model gets ~77%.
+        self.prior_games = prior_games
 
     def latest_consensus_lines(self, game_date: str) -> list:
-        """Most recent consensus snapshot per event/player/market."""
-        return self.db.query("""
+        """Most recent consensus snapshot per event/player/market,
+        restricted to the slate's game_date."""
+        return self.db.query(
+            """
             SELECT l.* FROM fact_consensus_lines l
             JOIN (
                 SELECT event_id, player_name, market, MAX(snapshot_time) AS s
                 FROM fact_consensus_lines
-                WHERE is_consensus = 1
+                WHERE is_consensus = 1 AND game_date = ?
                 GROUP BY event_id, player_name, market
             ) latest
               ON latest.event_id = l.event_id
              AND latest.player_name = l.player_name
              AND latest.market = l.market
              AND latest.s = l.snapshot_time
-            WHERE l.is_consensus = 1
-            """)
+            WHERE l.is_consensus = 1 AND l.game_date = ?
+            """,
+            (str(game_date)[:10], str(game_date)[:10]),
+        )
 
     def _stat_history(self, player_id: int, stat: str, game_date: str) -> list[float]:
         stats = COMBO_STATS.get(stat, (stat,))
@@ -149,6 +158,69 @@ class SlateGenerator:
             "altitude": bool(feats.get("altitude_game", 0)),
         }
 
+    def _inactive_this_season(self, player_id: int, game_date: str) -> bool:
+        """True if the player's team has played this season but he has not
+        (injury/return ramp the market prices in but our stats can't see)."""
+        year = int(str(game_date)[:4])
+        month = int(str(game_date)[5:7])
+        season_start = f"{year if month >= 7 else year - 1}-10-01"
+        player_row = self.db.query_one(
+            "SELECT team_id FROM dim_players WHERE player_id = ?",
+            (player_id,),
+        )
+        team_id = player_row["team_id"] if player_row else None
+        if not team_id:
+            return False
+        team_played = self.db.query_one(
+            "SELECT 1 FROM fact_player_games g JOIN dim_players p "
+            "ON p.player_id = g.player_id "
+            "WHERE p.team_id = ? AND g.game_date >= ? LIMIT 1",
+            (team_id, season_start),
+        )
+        if not team_played:
+            return False
+        return (
+            self.db.query_one(
+                "SELECT 1 FROM fact_player_games "
+                "WHERE player_id = ? AND game_date >= ? LIMIT 1",
+                (player_id, season_start),
+            )
+            is None
+        )
+
+    @staticmethod
+    def _confidence(
+        feats: dict,
+        stat: str,
+        history_games: int,
+        inactive_this_season: bool = False,
+    ) -> tuple[bool, list[str]]:
+        """Gate recommendations on projection trustworthiness.
+
+        Low confidence when (a) the box-score window is thin (<8 games),
+        (b) recent form diverges sharply from long-run form — the
+        signature of a role change (trade, injury return, bench->starter)
+        where last-season rates are stale relative to the market — or
+        (c) the player has no games this season while his team does.
+        """
+        reasons = []
+        if history_games < 8:
+            reasons.append(f"thin sample ({history_games} games)")
+        if inactive_this_season:
+            reasons.append("no games played this season")
+
+        parts = COMBO_STATS.get(stat, (stat,))
+        recent = sum(feats.get(f"{s}_l3") or 0.0 for s in parts)
+        long_run = sum(feats.get(f"{s}_l20") or 0.0 for s in parts)
+        if (
+            feats.get("minutes_l3") is not None
+            and long_run > 0
+            and abs(recent - long_run) / long_run > 0.30
+        ):
+            reasons.append("role/form shift detected")
+
+        return bool(reasons), reasons
+
     @staticmethod
     def _ordinal(n: int) -> str:
         if 10 <= n % 100 <= 20:
@@ -174,6 +246,17 @@ class SlateGenerator:
                 continue
 
             history = self._stat_history(player_id, stat, game_date)
+            if line_row["line"] is not None and self.prior_games > 0:
+                n = len(history)
+                mu = (n * mu + self.prior_games * line_row["line"]) / (
+                    n + self.prior_games
+                )
+            low_conf, conf_reasons = self._confidence(
+                feats,
+                stat,
+                len(history),
+                inactive_this_season=self._inactive_this_season(player_id, game_date),
+            )
             pmf = self.dist.neg_binomial_pmf(mu, history=history or None)
             ev = self.ev.evaluate_line(
                 pmf,
@@ -188,6 +271,8 @@ class SlateGenerator:
                 player_name=line_row["player_name"],
                 market=line_row["market"],
             )
+            if low_conf:
+                ladder = {**ladder, "triggered": False}
 
             player = self.db.query_one(
                 "SELECT p.*, t.abbreviation AS team_abbr FROM dim_players p "
@@ -216,6 +301,7 @@ class SlateGenerator:
                     "market": line_row["market"],
                     "stat": stat,
                     "line": line_row["line"],
+                    "history_games": len(history),
                     "model_mean": round(mu, 2),
                     "model_edge": round(mu - line_row["line"], 2),
                     "p_over": round(ev["p_over"], 4),
@@ -225,8 +311,12 @@ class SlateGenerator:
                     "ev_over_pct": ev["ev_over_pct"],
                     "ev_under_pct": ev["ev_under_pct"],
                     "fair_over_american": ev["fair_over_american"],
-                    "recommended_side": ev["recommended_side"],
-                    "recommended_ev_pct": ev["recommended_ev_pct"],
+                    "recommended_side": (None if low_conf else ev["recommended_side"]),
+                    "recommended_ev_pct": (
+                        None if low_conf else ev["recommended_ev_pct"]
+                    ),
+                    "low_confidence": low_conf,
+                    "confidence_reasons": conf_reasons,
                     "factors": self._factor_block(
                         feats, opp_id, stat, game_date, minutes
                     ),

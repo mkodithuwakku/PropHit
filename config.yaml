@@ -12,7 +12,12 @@ ingestion:
     timeout_seconds: 30
   consensus_sources:
     # 100% free, unauthenticated public feeds — no keys or secrets.
+    # Chain order: first source returning a non-empty board wins.
     primary:
+      name: statpick
+      base_url: https://api.statpick.ai
+      path: /api/nba/prop-pages/slate
+    secondary:
       name: prizepicks
       base_url: https://api.prizepicks.com
       league_id: 7          # NBA

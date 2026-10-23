@@ -234,6 +234,14 @@ class ProphitDB:
         team_name: Optional[str] = None,
         team_city: Optional[str] = None,
     ) -> int:
+        # Merge a synthetic team row (created from an abbreviation seen in
+        # odds feeds) into the official team id before upserting.
+        existing = self.query_one(
+            "SELECT team_id FROM dim_teams WHERE abbreviation = ?",
+            (abbreviation,),
+        )
+        if existing and int(existing["team_id"]) != team_id:
+            self._promote_team_id(int(existing["team_id"]), team_id)
         with self.transaction() as conn:
             conn.execute(
                 """
@@ -267,6 +275,11 @@ class ProphitDB:
         team_id: Optional[int] = None,
         is_active: bool = True,
     ) -> int:
+        # If a stub row (synthetic ID from odds feeds) exists for this name,
+        # merge it into the real ID before upserting.
+        existing = self.player_id_for_name(full_name)
+        if existing is not None and existing != player_id:
+            self._promote_player_id(existing, player_id)
         with self.transaction() as conn:
             conn.execute(
                 """
@@ -297,6 +310,65 @@ class ProphitDB:
                 ),
             )
         return player_id
+
+    def _promote_team_id(self, old_id: int, new_id: int) -> None:
+        """Merge a synthetic team row into the official team id.
+
+        Repoints every fact/dim reference to ``new_id``, then renames the
+        stub (or deletes it if the real row already exists). FK checks are
+        deferred to commit.
+        """
+        if old_id == new_id:
+            return
+        conn = self._conn
+        conn.execute("PRAGMA defer_foreign_keys = ON")
+        for table, col in (
+            ("dim_players", "team_id"),
+            ("fact_player_games", "team_id"),
+            ("fact_player_games", "opponent_team_id"),
+            ("fact_team_defense_daily", "team_id"),
+        ):
+            conn.execute(
+                f"UPDATE {table} SET {col} = ? WHERE {col} = ?",
+                (new_id, old_id),
+            )
+        if self.query_one("SELECT 1 FROM dim_teams WHERE team_id = ?", (new_id,)):
+            conn.execute("DELETE FROM dim_teams WHERE team_id = ?", (old_id,))
+        else:
+            conn.execute(
+                "UPDATE dim_teams SET team_id = ? WHERE team_id = ?",
+                (new_id, old_id),
+            )
+        conn.commit()
+
+    def _promote_player_id(self, old_id: int, new_id: int) -> None:
+        """Merge a stub player row into the real-NBA-id counterpart.
+
+        Repoints every fact table to ``new_id``, then either renames the
+        stub row (if ``new_id`` is unused) or deletes it (if the real row
+        already exists). FK checks are deferred to commit.
+        """
+        if old_id == new_id:
+            return
+        conn = self._conn
+        conn.execute("PRAGMA defer_foreign_keys = ON")
+        for table, col in (
+            ("fact_player_games", "player_id"),
+            ("fact_consensus_lines", "player_id"),
+            ("fact_model_evaluations", "player_id"),
+        ):
+            conn.execute(
+                f"UPDATE {table} SET {col} = ? WHERE {col} = ?",
+                (new_id, old_id),
+            )
+        if self.query_one("SELECT 1 FROM dim_players WHERE player_id = ?", (new_id,)):
+            conn.execute("DELETE FROM dim_players WHERE player_id = ?", (old_id,))
+        else:
+            conn.execute(
+                "UPDATE dim_players SET player_id = ? WHERE player_id = ?",
+                (new_id, old_id),
+            )
+        conn.commit()
 
     def player_id_for_name(self, full_name: str) -> Optional[int]:
         """Resolve a player by normalized name; None if unknown."""

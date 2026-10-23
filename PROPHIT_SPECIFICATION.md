@@ -74,8 +74,8 @@ flowchart TD
    - Days of rest (B2B, 3-in-4, travel distance, altitude games e.g., DEN/UTA).
    - Game totals & point spreads (Vegas game totals indicate pace and blowout risk).
 3. **Consensus Line Aggregator (100% free, zero-auth):**
-   - Primary Source: **PrizePicks Public REST API** (`https://api.prizepicks.com/projections?league_id=7` for NBA). Returns the entire evening slate of player props in a single morning JSON payload.
-   - Secondary Fallback: **Underdog Fantasy** public over/under lines, used automatically if the primary pull fails.
+   - Primary Source: **statpick.ai public prop-lines API** (`https://api.statpick.ai/api/nba/prop-pages/slate`). Documented, unauthenticated JSON that aggregates ~5 sportsbooks into real consensus over/under prices per prop.
+   - Fallback chain: **PrizePicks Public REST API** (`api.prizepicks.com/projections?league_id=7`), then **Underdog Fantasy** public lines. Both are unauthenticated but sit behind bot protection on some networks — the chain tries each source in order until one returns a non-empty board.
    - Auth Required: **NONE** — 100% free, unauthenticated, zero secrets or tokens.
    - Target markets: Player Points, Rebounds, Assists, 3-Pointers Made (3PM), and Combos (Pts+Rebs+Asts).
 4. **Official Injury Feed:**
