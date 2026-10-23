@@ -1,8 +1,295 @@
 {
   "date": "2026-10-22",
-  "plays": [],
-  "generated_at": "2026-10-23T04:42:46+00:00",
-  "total_plays": 0,
-  "recommended_count": 0,
-  "milestone_count": 0
+  "demo": true,
+  "plays": [
+    {
+      "player_name": "LeBron James",
+      "player_id": 2544,
+      "position": "F",
+      "team_abbr": "LAL",
+      "opponent_abbr": "PHX",
+      "is_home": true,
+      "market": "player_assists",
+      "stat": "ast",
+      "line": 7.5,
+      "model_mean": 6.8,
+      "model_edge": -0.7,
+      "p_over": 0.3724,
+      "p_under": 0.6276,
+      "over_price": -110,
+      "under_price": -110,
+      "ev_over_pct": -28.901141758276548,
+      "ev_under_pct": 19.810232667367465,
+      "fair_over_american": 169,
+      "recommended_side": "under",
+      "recommended_ev_pct": 19.810232667367465,
+      "factors": {
+        "projected_minutes": 34.0,
+        "dvp_rank": null,
+        "dvp_label": "Opponent 12th vs AST",
+        "rest_days": null,
+        "rest_label": "Back-to-back",
+        "altitude": false
+      },
+      "milestone": {
+        "triggered": false,
+        "base_over": {
+          "p_over": 0.37242259078997997,
+          "fair_american": 169
+        },
+        "milestones": [
+          {
+            "k": 8,
+            "p_over": 0.37242259078997997,
+            "fair_american": 169,
+            "alt_target_american": 194
+          },
+          {
+            "k": 10,
+            "p_over": 0.2217345638184216,
+            "fair_american": 351,
+            "alt_target_american": 376
+          },
+          {
+            "k": 12,
+            "p_over": 0.12311073569900428,
+            "fair_american": 712,
+            "alt_target_american": 737
+          }
+        ]
+      }
+    },
+    {
+      "player_name": "Nikola Jokic",
+      "player_id": 203999,
+      "position": "C",
+      "team_abbr": "DEN",
+      "opponent_abbr": "UTA",
+      "is_home": true,
+      "market": "player_rebounds",
+      "stat": "reb",
+      "line": 12.5,
+      "model_mean": 15.4,
+      "model_edge": 2.9,
+      "p_over": 0.5732,
+      "p_under": 0.4268,
+      "over_price": -110,
+      "under_price": -110,
+      "ev_over_pct": 9.438423832925281,
+      "ev_under_pct": -18.529332923834364,
+      "fair_over_american": -134,
+      "recommended_side": "over",
+      "recommended_ev_pct": 9.438423832925281,
+      "factors": {
+        "projected_minutes": 34.8,
+        "dvp_rank": null,
+        "dvp_label": "Opponent 28th vs REB",
+        "rest_days": null,
+        "rest_label": "2 days rest",
+        "altitude": false
+      },
+      "milestone": {
+        "triggered": true,
+        "base_over": {
+          "p_over": 0.5732488867438943,
+          "fair_american": -134
+        },
+        "milestones": [
+          {
+            "k": 14,
+            "p_over": 0.522931905982468,
+            "fair_american": -110,
+            "alt_target_american": -85
+          },
+          {
+            "k": 16,
+            "p_over": 0.42822913410383867,
+            "fair_american": 134,
+            "alt_target_american": 159
+          },
+          {
+            "k": 18,
+            "p_over": 0.34400410688266664,
+            "fair_american": 191,
+            "alt_target_american": 216
+          }
+        ]
+      }
+    },
+    {
+      "player_name": "Stephen Curry",
+      "player_id": 201939,
+      "position": "G",
+      "team_abbr": "GSW",
+      "opponent_abbr": "POR",
+      "is_home": false,
+      "market": "player_threes",
+      "stat": "fg3m",
+      "line": 4.5,
+      "model_mean": 5.7,
+      "model_edge": 1.2,
+      "p_over": 0.5442,
+      "p_under": 0.4558,
+      "over_price": -105,
+      "under_price": -125,
+      "ev_over_pct": 6.243009756614992,
+      "ev_under_pct": -17.950872409757235,
+      "fair_over_american": -119,
+      "recommended_side": "over",
+      "recommended_ev_pct": 6.243009756614992,
+      "factors": {
+        "projected_minutes": 33.5,
+        "dvp_rank": null,
+        "dvp_label": "Opponent 24th vs 3PM",
+        "rest_days": null,
+        "rest_label": "3 days rest",
+        "altitude": false
+      },
+      "milestone": {
+        "triggered": false,
+        "base_over": {
+          "p_over": 0.5441715133875402,
+          "fair_american": -119
+        },
+        "milestones": [
+          {
+            "k": 6,
+            "p_over": 0.4402265819830562,
+            "fair_american": 127,
+            "alt_target_american": 152
+          },
+          {
+            "k": 8,
+            "p_over": 0.27293533402195225,
+            "fair_american": 266,
+            "alt_target_american": 291
+          },
+          {
+            "k": 10,
+            "p_over": 0.16013232209970973,
+            "fair_american": 524,
+            "alt_target_american": 549
+          }
+        ]
+      }
+    },
+    {
+      "player_name": "Jayson Tatum",
+      "player_id": 1628369,
+      "position": "F",
+      "team_abbr": "BOS",
+      "opponent_abbr": "NYK",
+      "is_home": false,
+      "market": "player_points",
+      "stat": "pts",
+      "line": 26.5,
+      "model_mean": 26.9,
+      "model_edge": 0.4,
+      "p_over": 0.4585,
+      "p_under": 0.5415,
+      "over_price": -110,
+      "under_price": -110,
+      "ev_over_pct": -12.470569768242413,
+      "ev_under_pct": 3.3796606773333293,
+      "fair_over_american": 118,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
+      "factors": {
+        "projected_minutes": 36.1,
+        "dvp_rank": null,
+        "dvp_label": "Opponent 8th vs PTS",
+        "rest_days": null,
+        "rest_label": "1 day rest",
+        "altitude": false
+      },
+      "milestone": {
+        "triggered": false,
+        "base_over": {
+          "p_over": 0.4584874916901588,
+          "fair_american": 118
+        },
+        "milestones": [
+          {
+            "k": 28,
+            "p_over": 0.42378190208041905,
+            "fair_american": 136,
+            "alt_target_american": 161
+          },
+          {
+            "k": 30,
+            "p_over": 0.3583159211215216,
+            "fair_american": 179,
+            "alt_target_american": 204
+          },
+          {
+            "k": 32,
+            "p_over": 0.2989392235983729,
+            "fair_american": 235,
+            "alt_target_american": 260
+          }
+        ]
+      }
+    },
+    {
+      "player_name": "Giannis Antetokounmpo",
+      "player_id": 203507,
+      "position": "F",
+      "team_abbr": "MIL",
+      "opponent_abbr": "CHI",
+      "is_home": true,
+      "market": "player_points",
+      "stat": "pts",
+      "line": 29.5,
+      "model_mean": 32.1,
+      "model_edge": 2.6,
+      "p_over": 0.4992,
+      "p_under": 0.5008,
+      "over_price": -115,
+      "under_price": -105,
+      "ev_over_pct": -6.676598551281954,
+      "ev_under_pct": -2.2192331850953817,
+      "fair_over_american": 100,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
+      "factors": {
+        "projected_minutes": 35.2,
+        "dvp_rank": null,
+        "dvp_label": "Opponent 26th vs PTS",
+        "rest_days": null,
+        "rest_label": "1 day rest",
+        "altitude": false
+      },
+      "milestone": {
+        "triggered": true,
+        "base_over": {
+          "p_over": 0.4991716821675617,
+          "fair_american": 100
+        },
+        "milestones": [
+          {
+            "k": 30,
+            "p_over": 0.4991716821675617,
+            "fair_american": 100,
+            "alt_target_american": 125
+          },
+          {
+            "k": 32,
+            "p_over": 0.43940946235755496,
+            "fair_american": 128,
+            "alt_target_american": 153
+          },
+          {
+            "k": 34,
+            "p_over": 0.38268534832581097,
+            "fair_american": 161,
+            "alt_target_american": 186
+          }
+        ]
+      }
+    }
+  ],
+  "generated_at": "2026-10-22T12:30:00Z",
+  "total_plays": 5,
+  "recommended_count": 3,
+  "milestone_count": 2
 }

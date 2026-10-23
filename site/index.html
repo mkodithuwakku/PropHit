@@ -6,32 +6,36 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
+    <meta name="theme-color" content="#121316" />
     <title>Prophit — Daily NBA Prop Slate</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <header class="slate-header">
-      <div class="header-row">
-        <h1>Prophit</h1>
-        <span id="slate-date" class="slate-date"></span>
-      </div>
-      <p id="slate-summary" class="slate-summary">Loading slate…</p>
-    </header>
+    <div class="app">
+      <header class="slate-header">
+        <div class="header-row">
+          <h1>PROPHIT</h1>
+          <span id="slate-date" class="slate-date"></span>
+        </div>
+        <p id="slate-summary" class="slate-summary">Loading slate…</p>
+        <div id="demo-badge" class="demo-badge" hidden>DEMO DATA</div>
+      </header>
 
-    <nav class="filter-tabs" id="filter-tabs" aria-label="Play filters">
-      <button data-filter="value" class="tab active">Top Value</button>
-      <button data-filter="milestones" class="tab">Milestones</button>
-      <button data-filter="pts" class="tab">Points</button>
-      <button data-filter="reb" class="tab">Rebounds</button>
-      <button data-filter="ast" class="tab">Assists</button>
-      <button data-filter="all" class="tab">All Plays</button>
-    </nav>
+      <nav class="filter-tabs" id="filter-tabs" aria-label="Play filters">
+        <button data-filter="value" class="tab active">Top Value</button>
+        <button data-filter="milestones" class="tab">Milestones</button>
+        <button data-filter="pts" class="tab">Points</button>
+        <button data-filter="reb" class="tab">Rebounds</button>
+        <button data-filter="ast" class="tab">Assists</button>
+        <button data-filter="all" class="tab">All Plays</button>
+      </nav>
 
-    <main id="plays" class="plays" aria-live="polite"></main>
+      <main id="plays" class="plays" aria-live="polite"></main>
 
-    <footer class="slate-footer">
-      <span id="generated-at"></span>
-    </footer>
+      <footer class="slate-footer">
+        <span id="generated-at"></span>
+      </footer>
+    </div>
 
     <script src="app.js"></script>
   </body>
