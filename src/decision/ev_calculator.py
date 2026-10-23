@@ -90,7 +90,14 @@ class EVCalculator:
             if milestone_k is not None
             else prob_over_line(pmf, line)
         )
-        p_under = 1.0 - p_over
+        # Integer lines can push: the mass at exactly `line` wins for neither
+        # side, so under-win prob is 1 - p_over - p_push (not 1 - p_over).
+        p_push = (
+            float(pmf[int(line)])
+            if milestone_k is None and float(line).is_integer() and int(line) < len(pmf)
+            else 0.0
+        )
+        p_under = 1.0 - p_over - p_push
 
         result = {
             "line": line,
@@ -106,13 +113,19 @@ class EVCalculator:
             "recommended_ev_pct": None,
         }
 
+        result["p_push"] = p_push
+
+        def _ev_pct(p_win: float, price: float) -> float:
+            # Win pays decimal `price`, push returns stake, loss pays 0.
+            return 100.0 * (p_win * american_to_decimal(price) + p_push - 1.0)
+
         candidates = []
         if over_price is not None and self._odds_allowed(over_price):
-            ev = expected_value_pct(p_over, over_price)
+            ev = _ev_pct(p_over, over_price)
             result["ev_over_pct"] = ev
             candidates.append(("over", ev))
         if under_price is not None and self._odds_allowed(under_price):
-            ev = expected_value_pct(p_under, under_price)
+            ev = _ev_pct(p_under, under_price)
             result["ev_under_pct"] = ev
             candidates.append(("under", ev))
 
