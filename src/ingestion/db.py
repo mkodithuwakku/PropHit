@@ -122,6 +122,7 @@ CREATE TABLE IF NOT EXISTS fact_consensus_lines (
     game_date          TEXT,
     home_team_abbr     TEXT,
     away_team_abbr     TEXT,
+    player_team_abbr   TEXT,
     player_id          INTEGER REFERENCES dim_players(player_id),
     player_name        TEXT NOT NULL,
     market             TEXT NOT NULL,
@@ -209,6 +210,14 @@ class ProphitDB:
 
     def initialize_schema(self) -> None:
         self._conn.executescript(SCHEMA_SQL)
+        columns = {
+            row["name"]
+            for row in self._conn.execute("PRAGMA table_info(fact_consensus_lines)")
+        }
+        if "player_team_abbr" not in columns:
+            self._conn.execute(
+                "ALTER TABLE fact_consensus_lines ADD COLUMN player_team_abbr TEXT"
+            )
         self._conn.commit()
 
     def close(self) -> None:
@@ -482,6 +491,7 @@ class ProphitDB:
             "game_date",
             "home_team_abbr",
             "away_team_abbr",
+            "player_team_abbr",
             "player_id",
             "player_name",
             "market",
@@ -507,6 +517,7 @@ class ProphitDB:
                     line        = excluded.line,
                     over_price  = excluded.over_price,
                     under_price = excluded.under_price,
+                    player_team_abbr = excluded.player_team_abbr,
                     ingested_at = excluded.ingested_at
                 """,
                 tuple(row[col] for col in columns),

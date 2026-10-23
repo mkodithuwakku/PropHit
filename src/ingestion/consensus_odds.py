@@ -580,6 +580,7 @@ class ConsensusOddsIngestion:
             "game_date": game_date or (commence_time or "")[:10] or None,
             "home_team_abbr": home_abbr,
             "away_team_abbr": away_abbr,
+            "player_team_abbr": team_abbr,
             "player_id": player_id,
             "player_name": player_name,
             "market": market,

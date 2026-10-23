@@ -1,4 +1,8 @@
 /* Prophit design system — charcoal/plum, mobile-first (SRD 7.1) */
+[hidden] {
+  display: none !important;
+}
+
 :root {
   --bg-base: #0d0e11;
   --bg-raised: #1c1a24;

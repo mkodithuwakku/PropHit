@@ -33,3 +33,8 @@ python3 -m venv .venv
 - `web/` — vanilla HTML/CSS/JS mobile dashboard
 - `docs/` — architecture notes and operational runbooks
 - `tests/` — offline test suite with mocked fixtures
+
+The Games view uses the home/away matchup stored with each consensus line.
+Player teams are also saved with the line, so importing older seasons cannot
+change today's matchups. See the daily refresh runbook for refresh and display
+verification steps.

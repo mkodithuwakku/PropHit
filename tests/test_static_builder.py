@@ -109,6 +109,26 @@ def test_generate_plays_end_to_end(slate_db):
     assert all("fair_american" in r for r in m["milestones"])
 
 
+def test_matchup_uses_line_snapshot_after_player_changes_team(slate_db):
+    slate_db.execute("UPDATE fact_consensus_lines SET player_team_abbr = 'TST'")
+    slate_db.upsert_team(9999, "OLD")
+    slate_db.upsert_player(P_ID, "Board Man", team_id=9999)
+
+    play = SlateGenerator(slate_db).generate_plays(GAME_DATE)[0]
+    assert play["team_abbr"] == "TST"
+    assert play["home_team_abbr"] == "TST"
+    assert play["away_team_abbr"] == "OPP"
+    assert play["event_id"] == "evt_tst_opp"
+    assert play["game_date"] == GAME_DATE
+    assert play["opponent_abbr"] == "OPP"
+    assert play["is_home"] is True
+
+
+def test_inconsistent_player_matchup_is_not_published(slate_db):
+    slate_db.execute("UPDATE fact_consensus_lines SET player_team_abbr = 'OTHER'")
+    assert SlateGenerator(slate_db).generate_plays(GAME_DATE) == []
+
+
 def test_generate_plays_combo_stat(slate_db):
     slate_db.insert_consensus_line(
         {

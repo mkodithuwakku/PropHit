@@ -122,8 +122,8 @@ function logoImg(abbr) {
 }
 
 function matchup(play) {
-  const home = play.is_home ? play.team_abbr : play.opponent_abbr;
-  const away = play.is_home ? play.opponent_abbr : play.team_abbr;
+  const home = play.home_team_abbr;
+  const away = play.away_team_abbr;
   return { key: `${away}@${home}`, away, home };
 }
 
@@ -435,6 +435,8 @@ function setView(view) {
   if (view !== "browse") state.game = null;
   state.limit = PAGE_SIZE;
   syncChrome();
+  renderTabs();
+  renderGamePicker();
   renderPlays();
   window.scrollTo({ top: 0 });
 }
@@ -499,9 +501,7 @@ function renderSlate(slate) {
   document.getElementById("slate-date").textContent = slate.date || "";
   document.getElementById("generated-at").textContent =
     `Generated ${slate.generated_at || ""}`;
-  if (slate.demo) {
-    document.getElementById("demo-badge").hidden = false;
-  }
+  document.getElementById("demo-badge").hidden = !slate.demo;
   renderModelRecord(slate.model_stats, slate.calibration);
   renderTabs();
   renderGamePicker();
@@ -544,7 +544,7 @@ function renderModelRecord(stats, calibration) {
 
 async function loadSlate() {
   try {
-    // ?t= busts CDN/browser caches — stale demo slates can never persist.
+    // Request a fresh snapshot rather than reusing a cached response.
     const res = await fetch(`daily_slate.json?t=${Date.now()}`, {
       cache: "no-store",
     });

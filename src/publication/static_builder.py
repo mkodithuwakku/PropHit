@@ -292,22 +292,37 @@ class SlateGenerator:
                 "WHERE p.player_id = ?",
                 (player_id,),
             )
+            team_abbr = line_row["player_team_abbr"] or (
+                player["team_abbr"] if player else None
+            )
+            if (
+                line_row["home_team_abbr"]
+                and line_row["away_team_abbr"]
+                and team_abbr
+                not in (line_row["home_team_abbr"], line_row["away_team_abbr"])
+            ):
+                # An inconsistent or obsolete source row cannot identify a
+                # valid player matchup. Do not publish a guessed opponent.
+                continue
             opp_abbr = (
                 line_row["away_team_abbr"]
-                if player and player["team_abbr"] == line_row["home_team_abbr"]
+                if team_abbr == line_row["home_team_abbr"]
                 else (line_row["home_team_abbr"] or line_row["away_team_abbr"])
             )
             opp_id = self.db.team_id_for_abbr(opp_abbr) if opp_abbr else None
-            is_home = (
-                player is not None and player["team_abbr"] == line_row["home_team_abbr"]
-            )
+            is_home = bool(team_abbr and team_abbr == line_row["home_team_abbr"])
 
             plays.append(
                 {
                     "player_name": line_row["player_name"],
                     "player_id": player_id,
                     "position": player["position"] if player else None,
-                    "team_abbr": player["team_abbr"] if player else None,
+                    "team_abbr": team_abbr,
+                    "event_id": line_row["event_id"],
+                    "game_date": line_row["game_date"],
+                    "home_team_abbr": line_row["home_team_abbr"],
+                    "away_team_abbr": line_row["away_team_abbr"],
+                    "commence_time": line_row["commence_time"],
                     "opponent_abbr": opp_abbr,
                     "is_home": bool(is_home),
                     "market": line_row["market"],
