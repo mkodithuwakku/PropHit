@@ -544,7 +544,10 @@ function renderModelRecord(stats, calibration) {
 
 async function loadSlate() {
   try {
-    const res = await fetch("daily_slate.json", { cache: "no-store" });
+    // ?t= busts CDN/browser caches — stale demo slates can never persist.
+    const res = await fetch(`daily_slate.json?t=${Date.now()}`, {
+      cache: "no-store",
+    });
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     renderSlate(await res.json());
   } catch (err) {
