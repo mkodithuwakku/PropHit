@@ -49,6 +49,25 @@ const STAT_LABELS = {
   tov: "TOV",
 };
 
+const SMART_FILTERS = [
+  ["value", "Top Value"],
+  ["milestones", "Milestones"],
+  ["overs", "Overs"],
+  ["unders", "Unders"],
+  ["all", "All"],
+];
+
+const PAGE_SIZE = 40;
+
+const state = {
+  filter: "value",
+  stat: null, // null = all stats
+  search: "",
+  sort: "ev",
+  limit: PAGE_SIZE,
+  plays: [],
+};
+
 const teamColor = (abbr) => TEAM_META[abbr]?.color || "#8b7fd4";
 
 const teamLogoUrl = (abbr) =>
@@ -75,6 +94,18 @@ function evChipClass(ev) {
   return "ev-caution";
 }
 
+function bestEv(play) {
+  const ev =
+    play.recommended_ev_pct ??
+    Math.max(play.ev_over_pct ?? -999, play.ev_under_pct ?? -999);
+  return ev === -999 ? null : ev;
+}
+
+function favoredSide(play) {
+  if (play.recommended_side) return play.recommended_side;
+  return (play.p_over || 0) >= 0.5 ? "over" : "under";
+}
+
 function fmtSigned(v, digits = 1) {
   if (v == null) return "—";
   return `${v >= 0 ? "+" : ""}${Number(v).toFixed(digits)}`;
@@ -92,13 +123,10 @@ function logoImg(abbr) {
     : "";
 }
 
-function cardHtml(play) {
+function cardHtml(play, featured) {
   const stat = STAT_LABELS[play.stat] || play.stat;
   const loc = play.is_home ? "vs" : "@";
-  const ev =
-    play.recommended_ev_pct ??
-    Math.max(play.ev_over_pct ?? -999, play.ev_under_pct ?? -999);
-  const evShown = ev === -999 ? null : ev;
+  const evShown = bestEv(play);
   const side =
     play.recommended_side === "under"
       ? "Under"
@@ -163,10 +191,9 @@ function cardHtml(play) {
        </div>`
     : "";
 
-  return `<article class="play-card" data-stat="${play.stat}"
-      data-value="${play.recommended_side ? 1 : 0}"
-      data-milestone="${m.triggered ? 1 : 0}"
+  return `<article class="play-card${featured ? " featured" : ""}" data-stat="${play.stat}"
       style="--team:${teamColor(play.team_abbr)}">
+    ${featured ? '<div class="featured-tag">TOP PICK</div>' : ""}
     <div class="card-top">
       <div class="avatar"><span class="initials">${initials(play.player_name)}</span><img
         src="${headshotUrl(play.player_id)}" alt=""
@@ -203,36 +230,120 @@ function cardHtml(play) {
   </article>`;
 }
 
-function applyFilter(filter) {
-  document.querySelectorAll(".play-card").forEach((card) => {
-    const show =
-      filter === "all" ||
-      (filter === "value" && card.dataset.value === "1") ||
-      (filter === "milestones" && card.dataset.milestone === "1") ||
-      card.dataset.stat === filter;
-    card.style.display = show ? "" : "none";
+// --- filtering / sorting pipeline -------------------------------------------
+
+function matchesFilter(play) {
+  switch (state.filter) {
+    case "value":
+      return !!play.recommended_side;
+    case "milestones":
+      return !!(play.milestone && play.milestone.triggered);
+    case "overs":
+      return play.recommended_side === "over";
+    case "unders":
+      return play.recommended_side === "under";
+    default:
+      return true;
+  }
+}
+
+function matchesSearch(play) {
+  if (!state.search) return true;
+  const q = state.search;
+  return (
+    (play.player_name || "").toLowerCase().includes(q) ||
+    (play.team_abbr || "").toLowerCase().includes(q) ||
+    (play.opponent_abbr || "").toLowerCase().includes(q)
+  );
+}
+
+const SORTERS = {
+  ev: (a, b) => (bestEv(b) ?? -999) - (bestEv(a) ?? -999),
+  prob: (a, b) =>
+    Math.max(b.p_over || 0, b.p_under || 0) -
+    Math.max(a.p_over || 0, a.p_under || 0),
+  edge: (a, b) => Math.abs(b.model_edge || 0) - Math.abs(a.model_edge || 0),
+  name: (a, b) => (a.player_name || "").localeCompare(b.player_name || ""),
+};
+
+function visiblePlays() {
+  return state.plays
+    .filter(
+      (p) =>
+        matchesFilter(p) &&
+        (state.stat === null || p.stat === state.stat) &&
+        matchesSearch(p),
+    )
+    .sort(SORTERS[state.sort] || SORTERS.ev);
+}
+
+// --- rendering ---------------------------------------------------------------
+
+function renderTabs() {
+  const counts = {
+    value: 0,
+    milestones: 0,
+    overs: 0,
+    unders: 0,
+    all: state.plays.length,
+  };
+  for (const p of state.plays) {
+    if (p.recommended_side) counts.value++;
+    if (p.milestone && p.milestone.triggered) counts.milestones++;
+    if (p.recommended_side === "over") counts.overs++;
+    if (p.recommended_side === "under") counts.unders++;
+  }
+  document.querySelectorAll("#filter-tabs .tab").forEach((btn) => {
+    const f = btn.dataset.filter;
+    const label = SMART_FILTERS.find(([k]) => k === f)[1];
+    btn.innerHTML = `${label} <span class="tab-n">${counts[f]}</span>`;
   });
+
+  const statCounts = {};
+  for (const p of state.plays) {
+    statCounts[p.stat] = (statCounts[p.stat] || 0) + 1;
+  }
+  const order = Object.keys(STAT_LABELS).filter((s) => statCounts[s]);
+  const tabsEl = document.getElementById("stat-tabs");
+  tabsEl.innerHTML =
+    `<button class="tab stat-tab${state.stat === null ? " active" : ""}" data-stat="">All stats</button>` +
+    order
+      .map(
+        (s) =>
+          `<button class="tab stat-tab${state.stat === s ? " active" : ""}" data-stat="${s}">${STAT_LABELS[s]} <span class="tab-n">${statCounts[s]}</span></button>`,
+      )
+      .join("");
+}
+
+function renderPlays() {
+  const visible = visiblePlays();
+  const slice = visible.slice(0, state.limit);
+  const featured =
+    state.filter === "value" && state.sort === "ev" && !state.search
+      ? slice[0]
+      : null;
+  const playsEl = document.getElementById("plays");
+  playsEl.innerHTML = slice.length
+    ? slice.map((p) => cardHtml(p, p === featured)).join("")
+    : '<div class="empty-state">No plays match these filters.</div>';
+
+  document.getElementById("results-count").textContent =
+    `${Math.min(state.limit, visible.length)} of ${visible.length}`;
+  document.getElementById("load-more").hidden =
+    visible.length <= state.limit;
 }
 
 function renderSlate(slate) {
-  const playsEl = document.getElementById("plays");
+  state.plays = slate.plays || [];
   document.getElementById("slate-date").textContent = slate.date || "";
-  document.getElementById("slate-summary").textContent =
-    `${slate.total_plays} plays · ${slate.recommended_count} recommended · ` +
-    `${slate.milestone_count} milestone alerts`;
   document.getElementById("generated-at").textContent =
     `Generated ${slate.generated_at || ""}`;
   if (slate.demo) {
     document.getElementById("demo-badge").hidden = false;
   }
   renderModelRecord(slate.model_stats, slate.calibration);
-
-  playsEl.innerHTML = slate.plays.length
-    ? slate.plays.map(cardHtml).join("")
-    : '<div class="empty-state">No plays evaluated for this slate.</div>';
-  applyFilter(
-    document.querySelector(".tab.active")?.dataset.filter || "value",
-  );
+  renderTabs();
+  renderPlays();
 }
 
 function renderModelRecord(stats, calibration) {
@@ -276,20 +387,51 @@ async function loadSlate() {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     renderSlate(await res.json());
   } catch (err) {
-    document.getElementById("slate-summary").textContent =
+    document.getElementById("results-count").textContent =
       "No slate published yet.";
     document.getElementById("plays").innerHTML =
       '<div class="empty-state">The morning pipeline has not run yet.</div>';
   }
 }
 
+// --- events ------------------------------------------------------------------
+
 document.getElementById("filter-tabs").addEventListener("click", (e) => {
   const btn = e.target.closest(".tab");
   if (!btn) return;
   document
-    .querySelectorAll(".tab")
+    .querySelectorAll("#filter-tabs .tab")
     .forEach((t) => t.classList.toggle("active", t === btn));
-  applyFilter(btn.dataset.filter);
+  state.filter = btn.dataset.filter;
+  state.limit = PAGE_SIZE;
+  renderPlays();
+});
+
+document.getElementById("stat-tabs").addEventListener("click", (e) => {
+  const btn = e.target.closest(".stat-tab");
+  if (!btn) return;
+  document
+    .querySelectorAll(".stat-tab")
+    .forEach((t) => t.classList.toggle("active", t === btn));
+  state.stat = btn.dataset.stat || null;
+  state.limit = PAGE_SIZE;
+  renderPlays();
+});
+
+document.getElementById("search").addEventListener("input", (e) => {
+  state.search = e.target.value.trim().toLowerCase();
+  state.limit = PAGE_SIZE;
+  renderPlays();
+});
+
+document.getElementById("sort-select").addEventListener("change", (e) => {
+  state.sort = e.target.value;
+  renderPlays();
+});
+
+document.getElementById("load-more").addEventListener("click", () => {
+  state.limit += PAGE_SIZE;
+  renderPlays();
 });
 
 document.addEventListener("DOMContentLoaded", loadSlate);

@@ -6,7 +6,7 @@
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
     />
-    <meta name="theme-color" content="#121316" />
+    <meta name="theme-color" content="#0d0e11" />
     <title>Prophit — Daily NBA Prop Slate</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
@@ -17,21 +17,43 @@
           <h1>PROPHIT</h1>
           <span id="slate-date" class="slate-date"></span>
         </div>
-        <p id="slate-summary" class="slate-summary">Loading slate…</p>
         <div id="model-record" class="model-record" hidden></div>
         <div id="demo-badge" class="demo-badge" hidden>DEMO DATA</div>
       </header>
 
-      <nav class="filter-tabs" id="filter-tabs" aria-label="Play filters">
-        <button data-filter="value" class="tab active">Top Value</button>
-        <button data-filter="milestones" class="tab">Milestones</button>
-        <button data-filter="pts" class="tab">Points</button>
-        <button data-filter="reb" class="tab">Rebounds</button>
-        <button data-filter="ast" class="tab">Assists</button>
-        <button data-filter="all" class="tab">All Plays</button>
-      </nav>
+      <div class="controls">
+        <div class="search-wrap">
+          <span class="search-icon">⌕</span>
+          <input
+            id="search"
+            type="search"
+            placeholder="Search player or team…"
+            autocomplete="off"
+          />
+        </div>
+        <nav class="filter-tabs" id="filter-tabs" aria-label="Play filters">
+          <button data-filter="value" class="tab active"></button>
+          <button data-filter="milestones" class="tab"></button>
+          <button data-filter="overs" class="tab"></button>
+          <button data-filter="unders" class="tab"></button>
+          <button data-filter="all" class="tab"></button>
+        </nav>
+        <nav class="stat-tabs" id="stat-tabs" aria-label="Stat filters"></nav>
+        <div class="results-meta">
+          <span id="results-count"></span>
+          <select id="sort-select" aria-label="Sort plays">
+            <option value="ev">Sort: EV</option>
+            <option value="prob">Sort: Probability</option>
+            <option value="edge">Sort: Edge</option>
+            <option value="name">Sort: Player</option>
+          </select>
+        </div>
+      </div>
 
       <main id="plays" class="plays" aria-live="polite"></main>
+      <div class="load-more-wrap">
+        <button id="load-more" class="load-more" hidden>Show more</button>
+      </div>
 
       <footer class="slate-footer">
         <span id="generated-at"></span>
