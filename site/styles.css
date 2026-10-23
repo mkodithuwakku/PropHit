@@ -180,39 +180,6 @@ body {
   margin-top: 10px;
 }
 
-.game-bar {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 10px;
-  margin-top: 9px;
-  background: linear-gradient(
-    135deg,
-    rgba(139, 127, 212, 0.18),
-    rgba(139, 127, 212, 0.06)
-  );
-  border: 1px solid rgba(139, 127, 212, 0.35);
-  border-radius: 10px;
-  padding: 6px 10px;
-}
-
-.game-title {
-  font-size: 0.82rem;
-  font-weight: 800;
-  letter-spacing: 0.05em;
-}
-
-.game-clear {
-  background: rgba(255, 255, 255, 0.08);
-  color: var(--text-primary);
-  border: none;
-  border-radius: 999px;
-  width: 22px;
-  height: 22px;
-  font-size: 0.7rem;
-  cursor: pointer;
-  flex-shrink: 0;
-}
 
 .digest-sort {
   display: flex;
@@ -669,25 +636,6 @@ body {
 
 .prob-labels .favored { color: var(--edge-positive); font-weight: 700; }
 
-.milestone-flag {
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  margin-top: 7px;
-  padding: 3px 8px;
-  border-radius: 999px;
-  font-size: 0.7rem;
-  font-weight: 800;
-  letter-spacing: 0.06em;
-  color: var(--edge-neutral);
-  background: rgba(251, 191, 36, 0.12);
-  border: 1px solid rgba(251, 191, 36, 0.3);
-}
-
-.milestone-flag::before {
-  content: "▲";
-  font-size: 0.6rem;
-}
 
 /* --- expandable trays --- */
 details.tray {
@@ -917,4 +865,110 @@ details.tray[open] summary::before {
 .featured-tag {
   font-size: 0.52rem;
   padding: 3px 8px;
+}
+
+/* --- game picker dropdown --- */
+.game-picker {
+  position: relative;
+  margin-bottom: 9px;
+}
+
+.game-picker-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  width: 100%;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  font-weight: 700;
+  padding: 9px 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.game-picker-btn:active {
+  border-color: var(--accent);
+}
+
+#game-picker-label {
+  flex: 1;
+  text-align: left;
+}
+
+.game-picker-caret {
+  color: var(--text-muted);
+  font-size: 0.7rem;
+}
+
+.game-picker-clear {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.1);
+  color: var(--text-primary);
+  font-size: 0.62rem;
+}
+
+.game-picker-list {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 30;
+  background: #1c1a26;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 5px;
+  max-height: 320px;
+  overflow-y: auto;
+  box-shadow: 0 14px 40px rgba(0, 0, 0, 0.55);
+}
+
+.game-option {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: none;
+  border-radius: 8px;
+  color: var(--text-primary);
+  font-size: 0.82rem;
+  padding: 8px 9px;
+  cursor: pointer;
+}
+
+.game-option:active,
+.game-option.active {
+  background: rgba(139, 127, 212, 0.18);
+}
+
+.game-option .game-teams img {
+  width: 20px;
+  height: 20px;
+}
+
+/* --- compact milestone badge + tray label --- */
+.ms-badge {
+  font-size: 0.58rem;
+  font-weight: 800;
+  letter-spacing: 0.06em;
+  color: var(--edge-neutral);
+  white-space: nowrap;
+}
+
+.tray-label {
+  margin-top: 8px;
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.12em;
+  color: var(--text-muted);
 }

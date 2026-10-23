@@ -28,12 +28,15 @@
           <button data-view="games" class="view-tab">Games</button>
         </nav>
 
-        <div id="game-bar" class="game-bar" hidden>
-          <span id="game-title" class="game-title"></span>
-          <button id="game-clear" class="game-clear" aria-label="Clear game filter">✕</button>
-        </div>
-
         <div id="browse-controls" class="browse-controls">
+          <div class="game-picker" id="game-picker">
+            <button id="game-picker-btn" class="game-picker-btn" type="button">
+              <span id="game-picker-label">All games</span>
+              <span id="game-picker-clear" class="game-picker-clear" hidden>✕</span>
+              <span class="game-picker-caret">▾</span>
+            </button>
+            <div id="game-picker-list" class="game-picker-list" hidden></div>
+          </div>
           <div class="search-wrap">
             <span class="search-icon">⌕</span>
             <input

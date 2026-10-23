@@ -220,6 +220,7 @@ function cardHtml(play, { featured = false } = {}) {
       <div class="line-model"><b>${play.line}</b>→<b>${play.model_mean}</b>
         <span class="edge-arrow ${edge >= 0 ? "up" : "down"}">${edge >= 0 ? "▲" : "▼"}${fmtSigned(edge)}</span>
       </div>
+      ${m.triggered ? '<span class="ms-badge">▲ ALT</span>' : ""}
     </div>
     <div class="prob-bar"><div class="prob-fill${underFavored ? " under" : ""}"
       style="width:${favoredPct}%"></div></div>
@@ -227,11 +228,10 @@ function cardHtml(play, { featured = false } = {}) {
       <span class="${underFavored ? "" : "favored"}">O ${pOver.toFixed(1)}%</span>
       <span class="${underFavored ? "favored" : ""}">U ${pUnder.toFixed(1)}%</span>
     </div>
-    ${m.triggered ? '<div class="milestone-flag">MILESTONE</div>' : ""}
-    <details class="tray"><summary>Factors</summary>
+    <details class="tray"><summary>Factors${m.triggered ? " + Ladder" : ""}</summary>
       <div class="fact-grid">${factGrid(play)}</div>
+      ${m.triggered ? `<div class="tray-label">MILESTONE LADDER</div>${ladderHtml(m)}` : ""}
     </details>
-    ${m.triggered ? `<details class="tray"><summary>Milestone ladder</summary>${ladderHtml(m)}</details>` : ""}
   </article>`;
 }
 
@@ -399,10 +399,34 @@ function renderPlays() {
 function syncChrome() {
   document.getElementById("browse-controls").hidden = state.view !== "browse";
   document.getElementById("digest-sort").hidden = state.view !== "digest";
-  document.getElementById("game-bar").hidden = !state.game;
+  document.getElementById("game-picker-label").textContent = state.game
+    ? state.game.replace("@", " @ ")
+    : "All games";
+  document.getElementById("game-picker-clear").hidden = !state.game;
   document
     .querySelectorAll("#view-tabs .view-tab")
     .forEach((t) => t.classList.toggle("active", t.dataset.view === state.view));
+}
+
+function renderGamePicker() {
+  const list = document.getElementById("game-picker-list");
+  const games = gameList();
+  list.innerHTML =
+    `<button class="game-option${state.game === null ? " active" : ""}" data-game="">
+      <span class="game-teams"><b>All games</b></span>
+    </button>` +
+    games
+      .map(
+        (g) => `<button class="game-option${state.game === g.key ? " active" : ""}" data-game="${g.key}">
+          <span class="game-teams">
+            ${logoImg(g.away)}<b>${g.away}</b>
+            <span class="game-at">@</span>
+            ${logoImg(g.home)}<b>${g.home}</b>
+          </span>
+          ${g.rec ? `<span class="rec-n">${g.rec}</span>` : ""}
+        </button>`,
+      )
+      .join("");
 }
 
 function setView(view) {
@@ -420,11 +444,21 @@ function openGame(key) {
   state.game = key;
   state.view = "browse";
   state.limit = PAGE_SIZE;
-  document.getElementById("game-title").textContent = key.replace("@", " @ ");
+  document.getElementById("game-picker-list").hidden = true;
   syncChrome();
   renderTabs();
+  renderGamePicker();
   renderPlays();
   window.scrollTo({ top: 0 });
+}
+
+function clearGame() {
+  state.game = null;
+  state.limit = PAGE_SIZE;
+  syncChrome();
+  renderTabs();
+  renderGamePicker();
+  renderPlays();
 }
 
 function renderTabs() {
@@ -470,6 +504,7 @@ function renderSlate(slate) {
   }
   renderModelRecord(slate.model_stats, slate.calibration);
   renderTabs();
+  renderGamePicker();
   syncChrome();
   renderPlays();
 }
@@ -533,12 +568,34 @@ document.getElementById("plays").addEventListener("click", (e) => {
   if (gc) openGame(gc.dataset.game);
 });
 
-document.getElementById("game-clear").addEventListener("click", () => {
-  state.game = null;
-  state.limit = PAGE_SIZE;
-  syncChrome();
-  renderTabs();
-  renderPlays();
+// game-picker dropdown: toggle, select, clear, outside-click close
+document.getElementById("game-picker-btn").addEventListener("click", (e) => {
+  if (e.target.closest("#game-picker-clear")) return;
+  const list = document.getElementById("game-picker-list");
+  list.hidden = !list.hidden;
+});
+
+document.getElementById("game-picker-clear").addEventListener("click", (e) => {
+  e.stopPropagation();
+  document.getElementById("game-picker-list").hidden = true;
+  clearGame();
+});
+
+document.getElementById("game-picker-list").addEventListener("click", (e) => {
+  const opt = e.target.closest(".game-option");
+  if (!opt) return;
+  document.getElementById("game-picker-list").hidden = true;
+  if (opt.dataset.game) {
+    openGame(opt.dataset.game);
+  } else {
+    clearGame();
+  }
+});
+
+document.addEventListener("click", (e) => {
+  if (!e.target.closest("#game-picker")) {
+    document.getElementById("game-picker-list").hidden = true;
+  }
 });
 
 document.getElementById("digest-sort").addEventListener("click", (e) => {
