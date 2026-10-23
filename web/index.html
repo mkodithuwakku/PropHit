@@ -23,10 +23,15 @@
 
       <div class="controls">
         <nav class="view-tabs" id="view-tabs" aria-label="Views">
-          <button data-view="digest" class="view-tab active">Best Picks</button>
+          <button data-view="browse" class="view-tab active">Browse</button>
+          <button data-view="digest" class="view-tab">Best Picks</button>
           <button data-view="games" class="view-tab">Games</button>
-          <button data-view="browse" class="view-tab">Browse</button>
         </nav>
+
+        <div id="game-bar" class="game-bar" hidden>
+          <span id="game-title" class="game-title"></span>
+          <button id="game-clear" class="game-clear" aria-label="Clear game filter">✕</button>
+        </div>
 
         <div id="browse-controls" class="browse-controls">
           <div class="search-wrap">
@@ -57,9 +62,9 @@
           </div>
         </div>
 
-        <div id="game-bar" class="game-bar" hidden>
-          <button id="game-back" class="game-back">‹ All games</button>
-          <span id="game-title" class="game-title"></span>
+        <div id="digest-sort" class="digest-sort" hidden>
+          <button data-dsort="ev" class="tab active">EV</button>
+          <button data-dsort="prob" class="tab">Prob</button>
         </div>
       </div>
 

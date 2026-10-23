@@ -183,25 +183,50 @@ body {
 .game-bar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   margin-top: 9px;
-}
-
-.game-back {
-  background: var(--bg-card);
-  color: var(--accent-bright);
-  border: 1px solid var(--border);
-  border-radius: 999px;
-  padding: 5px 12px;
-  font-size: 0.74rem;
-  font-weight: 700;
-  cursor: pointer;
+  background: linear-gradient(
+    135deg,
+    rgba(139, 127, 212, 0.18),
+    rgba(139, 127, 212, 0.06)
+  );
+  border: 1px solid rgba(139, 127, 212, 0.35);
+  border-radius: 10px;
+  padding: 6px 10px;
 }
 
 .game-title {
-  font-size: 0.85rem;
+  font-size: 0.82rem;
   font-weight: 800;
-  letter-spacing: 0.04em;
+  letter-spacing: 0.05em;
+}
+
+.game-clear {
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--text-primary);
+  border: none;
+  border-radius: 999px;
+  width: 22px;
+  height: 22px;
+  font-size: 0.7rem;
+  cursor: pointer;
+  flex-shrink: 0;
+}
+
+.digest-sort {
+  display: flex;
+  gap: 7px;
+  margin-top: 9px;
+  align-items: center;
+}
+
+.digest-sort::before {
+  content: "SORT";
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.14em;
+  color: var(--text-muted);
 }
 
 .search-wrap {
@@ -412,10 +437,22 @@ body {
 
 /* --- play cards --- */
 .plays {
-  padding: 10px 14px 20px;
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
+  padding: 10px 12px 20px;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  align-items: start;
+}
+
+.plays.cols3 {
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 7px;
+}
+
+.game-card,
+.empty-state,
+.section-header {
+  grid-column: 1 / -1;
 }
 
 .play-card {
@@ -428,7 +465,7 @@ body {
   border: 1px solid var(--border);
   border-left: 3px solid var(--team);
   border-radius: 12px;
-  padding: 11px 12px;
+  padding: 9px 10px;
   overflow: hidden;
 }
 
@@ -456,17 +493,17 @@ body {
 .card-top {
   display: flex;
   align-items: center;
-  gap: 9px;
+  gap: 7px;
 }
 
 .avatar {
   position: relative;
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   flex-shrink: 0;
   background: linear-gradient(160deg, #2b2938, #1b1924);
-  border: 2px solid var(--team);
+  border: 1.5px solid var(--team);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -506,29 +543,34 @@ body {
 
 .player-name {
   font-weight: 700;
-  font-size: 0.92rem;
+  font-size: 0.82rem;
   letter-spacing: 0.01em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .player-meta {
   display: flex;
   align-items: center;
-  gap: 5px;
+  gap: 4px;
   color: var(--text-muted);
-  font-size: 0.72rem;
+  font-size: 0.66rem;
   margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
 }
 
 .player-meta img {
-  width: 15px;
-  height: 15px;
+  width: 13px;
+  height: 13px;
   object-fit: contain;
 }
 
 .chip {
   border-radius: 999px;
-  padding: 4px 9px;
-  font-size: 0.68rem;
+  padding: 3px 7px;
+  font-size: 0.6rem;
   font-weight: 800;
   white-space: nowrap;
   letter-spacing: 0.02em;
@@ -554,14 +596,14 @@ body {
 .stat-row {
   display: flex;
   align-items: center;
-  gap: 9px;
-  margin-top: 8px;
+  gap: 7px;
+  margin-top: 7px;
 }
 
 .stat-badge {
   border-radius: 6px;
-  padding: 3px 8px;
-  font-size: 0.68rem;
+  padding: 2px 6px;
+  font-size: 0.62rem;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -578,18 +620,18 @@ body {
 .stat-badge.tov { background: rgba(154, 150, 168, 0.16); color: #b6b2c2; }
 
 .line-model {
-  font-size: 0.86rem;
+  font-size: 0.8rem;
   color: var(--text-muted);
 }
 
 .line-model b {
   color: var(--accent-bright);
-  font-size: 0.94rem;
+  font-size: 0.86rem;
 }
 
 .edge-arrow {
   font-weight: 700;
-  font-size: 0.78rem;
+  font-size: 0.68rem;
   margin-left: 4px;
 }
 
@@ -620,8 +662,8 @@ body {
 .prob-labels {
   display: flex;
   justify-content: space-between;
-  margin-top: 4px;
-  font-size: 0.7rem;
+  margin-top: 3px;
+  font-size: 0.62rem;
   color: var(--text-muted);
 }
 
@@ -631,8 +673,8 @@ body {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  margin-top: 10px;
-  padding: 4px 10px;
+  margin-top: 7px;
+  padding: 3px 8px;
   border-radius: 999px;
   font-size: 0.7rem;
   font-weight: 800;
@@ -649,7 +691,7 @@ body {
 
 /* --- expandable trays --- */
 details.tray {
-  margin-top: 8px;
+  margin-top: 7px;
   border-top: 1px solid var(--border);
   padding-top: 6px;
 }
@@ -657,7 +699,7 @@ details.tray {
 details.tray summary {
   cursor: pointer;
   color: var(--text-muted);
-  font-size: 0.78rem;
+  font-size: 0.7rem;
   font-weight: 600;
   list-style: none;
 }
@@ -778,4 +820,101 @@ details.tray[open] summary::before {
   color: var(--text-muted);
   font-size: 0.68rem;
   padding: 18px;
+}
+
+/* --- mini tiles (Best Picks, 3 per row) --- */
+.mini-card {
+  position: relative;
+  background: linear-gradient(
+    160deg,
+    color-mix(in srgb, var(--team) 11%, var(--bg-card)),
+    var(--bg-card) 60%
+  );
+  border: 1px solid var(--border);
+  border-top: 2px solid var(--team);
+  border-radius: 11px;
+  padding: 8px 8px 7px;
+  overflow: hidden;
+}
+
+.mini-card .avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 0.6rem;
+}
+
+.mc-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 6px;
+}
+
+.mc-ev {
+  font-size: 0.6rem;
+  font-weight: 800;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
+.mc-ev.pos { color: var(--edge-positive); }
+.mc-ev.neu { color: var(--edge-neutral); }
+.mc-ev.neg { color: var(--edge-caution); }
+
+.mc-name {
+  font-weight: 700;
+  font-size: 0.74rem;
+  margin-top: 6px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mc-meta {
+  color: var(--text-muted);
+  font-size: 0.6rem;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.mc-stat {
+  color: var(--accent-bright);
+  font-weight: 800;
+}
+
+.mc-line {
+  margin-top: 5px;
+  font-size: 0.7rem;
+  color: var(--text-muted);
+}
+
+.mc-line b {
+  color: var(--accent-bright);
+}
+
+.mini-card .prob-bar {
+  margin-top: 5px;
+  height: 4px;
+}
+
+.mc-fav {
+  margin-top: 3px;
+  font-size: 0.62rem;
+  font-weight: 700;
+  color: var(--edge-positive);
+}
+
+.mc-flag {
+  margin-top: 4px;
+  font-size: 0.56rem;
+  font-weight: 800;
+  letter-spacing: 0.08em;
+  color: var(--edge-neutral);
+}
+
+.featured-tag {
+  font-size: 0.52rem;
+  padding: 3px 8px;
 }

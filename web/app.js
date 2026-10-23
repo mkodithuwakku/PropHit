@@ -57,15 +57,16 @@ const SMART_FILTERS = [
   ["all", "All"],
 ];
 
-const PAGE_SIZE = 40;
+const PAGE_SIZE = 60;
 
 const state = {
-  view: "digest", // digest | games | game | browse
-  game: null, // matchup key when view === "game"
+  view: "browse", // browse | digest | games
+  game: null, // matchup key scoping browse to one game
   filter: "value",
-  stat: null, // null = all stats (browse)
+  stat: null,
   search: "",
   sort: "ev",
+  dsort: "ev", // best-picks sort: ev | prob
   limit: PAGE_SIZE,
   plays: [],
 };
@@ -121,81 +122,85 @@ function logoImg(abbr) {
 }
 
 function matchup(play) {
-  // "AWAY@HOME" key + display parts, resolved from the player's side.
   const home = play.is_home ? play.team_abbr : play.opponent_abbr;
   const away = play.is_home ? play.opponent_abbr : play.team_abbr;
   return { key: `${away}@${home}`, away, home };
 }
 
-function cardHtml(play, { featured = false, showStat = true } = {}) {
-  const stat = STAT_LABELS[play.stat] || play.stat;
-  const loc = play.is_home ? "vs" : "@";
-  const evShown = bestEv(play);
-  const side =
-    play.recommended_side === "under"
-      ? "Under"
-      : play.recommended_side === "over"
-        ? "Over"
-        : null;
-  const chipText = play.market_suppressed
-    ? "MKT OFF"
-    : play.low_confidence
-      ? "LOW CONF"
-      : side
-        ? `${side} ${fmtSigned(evShown)}%`
-        : `${fmtSigned(evShown)}% EV`;
-  const edge = play.model_edge ?? 0;
-  const arrow = edge >= 0 ? "up" : "down";
-  const pOver = Math.max(0, Math.min(100, (play.p_over || 0) * 100));
-  const pUnder = 100 - pOver;
-  const underFavored = pUnder > pOver;
-  const favoredPct = Math.max(pOver, pUnder);
+// LOW CONF plays are hidden app-wide — the calibration + confidence
+// gates already decided they are not actionable tonight.
+function basePlays() {
+  return state.plays.filter((p) => !p.low_confidence);
+}
 
+function sideText(play) {
+  return play.recommended_side === "under"
+    ? "Under"
+    : play.recommended_side === "over"
+      ? "Over"
+      : null;
+}
+
+function chipText(play) {
+  if (play.market_suppressed) return "MKT OFF";
+  const side = sideText(play);
+  const ev = bestEv(play);
+  return side ? `${side} ${fmtSigned(ev)}%` : `${fmtSigned(ev)}% EV`;
+}
+
+function probNums(play) {
+  const pOver = Math.max(0, Math.min(100, (play.p_over || 0) * 100));
+  return { pOver, pUnder: 100 - pOver };
+}
+
+function factGrid(play) {
   const f = play.factors || {};
-  const facts = [
+  return [
     ["Proj. Min", f.projected_minutes],
     ["Sample", play.history_games != null ? `${play.history_games} g` : null],
     [
       "Confidence",
       play.market_suppressed
         ? "Market auto-suppressed (losing calibration ROI)"
-        : play.low_confidence
-          ? `Low — ${(play.confidence_reasons || []).join(", ")}`
-          : null,
+        : null,
     ],
     ["DvP", f.dvp_label],
     ["Rest", f.rest_label],
     ["Altitude", f.altitude ? "Yes" : null],
-    [
-      "Book",
-      `O ${fmtOdds(play.over_price)} / U ${fmtOdds(play.under_price)}`,
-    ],
+    ["Book", `O ${fmtOdds(play.over_price)} / U ${fmtOdds(play.under_price)}`],
     ["Fair Over", fmtOdds(play.fair_over_american)],
   ]
     .filter(([, v]) => v != null)
     .map(([k, v]) => `<div>${k}: <b>${v}</b></div>`)
     .join("");
+}
 
+function ladderHtml(m) {
+  return `<div class="ladder">
+    ${m.milestones
+      .map((r) => {
+        const pct = Math.max(0, Math.min(100, r.p_over * 100));
+        return `<div class="ladder-rung">
+          <span class="ladder-k">${r.k}+</span>
+          <div><div class="ladder-bar"><div class="ladder-fill" style="width:${pct}%"></div></div></div>
+          <span class="ladder-odds"><b>${fmtOdds(r.fair_american)}</b>
+            (${pct.toFixed(0)}%) · <span class="target">${fmtOdds(r.alt_target_american)}+</span></span>
+        </div>`;
+      })
+      .join("")}
+  </div>`;
+}
+
+// Compact grid card — two per row in Browse.
+function cardHtml(play, { featured = false } = {}) {
+  const { pOver, pUnder } = probNums(play);
+  const underFavored = pUnder > pOver;
+  const favoredPct = Math.max(pOver, pUnder);
+  const edge = play.model_edge ?? 0;
   const m = play.milestone || {};
-  const ladder = m.triggered
-    ? `<div class="ladder">
-         ${m.milestones
-           .map((r) => {
-             const pct = Math.max(0, Math.min(100, r.p_over * 100));
-             return `<div class="ladder-rung">
-               <span class="ladder-k">${r.k}+</span>
-               <div>
-                 <div class="ladder-bar"><div class="ladder-fill" style="width:${pct}%"></div></div>
-               </div>
-               <span class="ladder-odds"><b>${fmtOdds(r.fair_american)}</b>
-                 (${pct.toFixed(0)}%) · <span class="target">${fmtOdds(r.alt_target_american)}+</span></span>
-             </div>`;
-           })
-           .join("")}
-       </div>`
-    : "";
+  const loc = play.is_home ? "vs" : "@";
 
-  return `<article class="play-card${featured ? " featured" : ""}" data-stat="${play.stat}"
+  return `<article class="play-card${featured ? " featured" : ""}"
       style="--team:${teamColor(play.team_abbr)}">
     ${featured ? '<div class="featured-tag">TOP PICK</div>' : ""}
     <div class="card-top">
@@ -206,18 +211,14 @@ function cardHtml(play, { featured = false, showStat = true } = {}) {
         onerror="this.remove()"/></div>
       <div class="player-block">
         <div class="player-name">${play.player_name}</div>
-        <div class="player-meta">${logoImg(play.team_abbr)}
-          <span>${play.position || ""} ${play.team_abbr || ""} ${loc}</span>
-          ${logoImg(play.opponent_abbr)}
-          <span>${play.opponent_abbr || ""}</span>
-        </div>
+        <div class="player-meta">${logoImg(play.team_abbr)}<span>${play.team_abbr || ""} ${loc}</span>${logoImg(play.opponent_abbr)}<span>${play.opponent_abbr || ""}</span></div>
       </div>
-      <span class="chip ${play.market_suppressed || play.low_confidence ? "ev-caution" : evChipClass(evShown)}">${chipText}</span>
+      <span class="chip ${play.market_suppressed ? "ev-caution" : evChipClass(bestEv(play))}">${chipText(play)}</span>
     </div>
     <div class="stat-row">
-      ${showStat ? `<span class="stat-badge ${play.stat}">${stat}</span>` : ""}
-      <div class="line-model"><b>${play.line}</b> → <b>${play.model_mean}</b>
-        <span class="edge-arrow ${arrow}">${edge >= 0 ? "▲" : "▼"} ${fmtSigned(edge)}</span>
+      <span class="stat-badge ${play.stat}">${STAT_LABELS[play.stat] || play.stat}</span>
+      <div class="line-model"><b>${play.line}</b>→<b>${play.model_mean}</b>
+        <span class="edge-arrow ${edge >= 0 ? "up" : "down"}">${edge >= 0 ? "▲" : "▼"}${fmtSigned(edge)}</span>
       </div>
     </div>
     <div class="prob-bar"><div class="prob-fill${underFavored ? " under" : ""}"
@@ -226,15 +227,52 @@ function cardHtml(play, { featured = false, showStat = true } = {}) {
       <span class="${underFavored ? "" : "favored"}">O ${pOver.toFixed(1)}%</span>
       <span class="${underFavored ? "favored" : ""}">U ${pUnder.toFixed(1)}%</span>
     </div>
-    ${m.triggered ? '<div class="milestone-flag">MILESTONE ALERT</div>' : ""}
+    ${m.triggered ? '<div class="milestone-flag">MILESTONE</div>' : ""}
     <details class="tray"><summary>Factors</summary>
-      <div class="fact-grid">${facts}</div>
+      <div class="fact-grid">${factGrid(play)}</div>
     </details>
-    ${m.triggered ? `<details class="tray"><summary>Milestone ladder</summary>${ladder}</details>` : ""}
+    ${m.triggered ? `<details class="tray"><summary>Milestone ladder</summary>${ladderHtml(m)}</details>` : ""}
   </article>`;
 }
 
-// --- browse pipeline ----------------------------------------------------------
+// Ultra-compact tile — three per row in Best Picks.
+function miniHtml(play) {
+  const { pOver, pUnder } = probNums(play);
+  const underFavored = pUnder > pOver;
+  const favoredPct = Math.max(pOver, pUnder);
+  const ev = bestEv(play);
+  const evCls = play.market_suppressed ? "neg" : ev >= 5 ? "pos" : ev >= 0 ? "neu" : "neg";
+  const side = play.recommended_side || (underFavored ? "under" : "over");
+
+  return `<article class="mini-card" style="--team:${teamColor(play.team_abbr)}">
+    <div class="mc-top">
+      <div class="avatar"><span class="initials">${initials(play.player_name)}</span><img
+        src="${headshotUrl(play.player_id)}" alt=""
+        loading="lazy"
+        onload="this.closest('.avatar').classList.add('loaded')"
+        onerror="this.remove()"/></div>
+      <span class="mc-ev ${evCls}">${side === "over" ? "O" : "U"} ${fmtSigned(ev, 0)}%</span>
+    </div>
+    <div class="mc-name">${play.player_name}</div>
+    <div class="mc-meta">${play.team_abbr || ""}${play.is_home ? " vs" : " @"} ${play.opponent_abbr || ""} · <b class="mc-stat">${STAT_LABELS[play.stat] || play.stat}</b></div>
+    <div class="mc-line">${play.line} → <b>${play.model_mean}</b></div>
+    <div class="prob-bar"><div class="prob-fill${underFavored ? " under" : ""}"
+      style="width:${favoredPct}%"></div></div>
+    <div class="mc-fav">${side === "over" ? "Over" : "Under"} ${favoredPct.toFixed(0)}%</div>
+    ${play.milestone && play.milestone.triggered ? '<div class="mc-flag">▲ MILESTONE</div>' : ""}
+  </article>`;
+}
+
+// --- pipelines ---------------------------------------------------------------
+
+const SORTERS = {
+  ev: (a, b) => (bestEv(b) ?? -999) - (bestEv(a) ?? -999),
+  prob: (a, b) =>
+    Math.max(b.p_over || 0, b.p_under || 0) -
+    Math.max(a.p_over || 0, a.p_under || 0),
+  edge: (a, b) => Math.abs(b.model_edge || 0) - Math.abs(a.model_edge || 0),
+  name: (a, b) => (a.player_name || "").localeCompare(b.player_name || ""),
+};
 
 function matchesFilter(play) {
   switch (state.filter) {
@@ -261,73 +299,34 @@ function matchesSearch(play) {
   );
 }
 
-const SORTERS = {
-  // EV%: expected profit per $1 risked at the offered odds — highest first
-  ev: (a, b) => (bestEv(b) ?? -999) - (bestEv(a) ?? -999),
-  // Probability: model's chance the favored side hits — most likely first
-  prob: (a, b) =>
-    Math.max(b.p_over || 0, b.p_under || 0) -
-    Math.max(a.p_over || 0, a.p_under || 0),
-  // Edge: distance between model mean and the line — biggest gaps first
-  edge: (a, b) => Math.abs(b.model_edge || 0) - Math.abs(a.model_edge || 0),
-  name: (a, b) => (a.player_name || "").localeCompare(b.player_name || ""),
-};
-
-function sortByState(plays) {
-  return [...plays].sort(SORTERS[state.sort] || SORTERS.ev);
+function inGame(play) {
+  return !state.game || matchup(play).key === state.game;
 }
 
-function visiblePlays() {
-  return sortByState(
-    state.plays.filter(
+function browsePlays() {
+  return basePlays()
+    .filter(
       (p) =>
+        inGame(p) &&
         matchesFilter(p) &&
         (state.stat === null || p.stat === state.stat) &&
         matchesSearch(p),
-    ),
-  );
-}
-
-// --- view renderers ------------------------------------------------------------
-
-function sectionHeader(stat, count) {
-  const label = STAT_LABELS[stat] || stat;
-  return `<div class="section-header"><span class="stat-badge ${stat}">${label}</span><span class="section-n">${count} pick${count === 1 ? "" : "s"}</span></div>`;
-}
-
-function renderGrouped(plays, { topPerStat = null } = {}) {
-  const byStat = {};
-  for (const p of sortByState(plays)) {
-    (byStat[p.stat] = byStat[p.stat] || []).push(p);
-  }
-  const order = Object.keys(byStat).sort(
-    (a, b) => (bestEv(byStat[b][0]) ?? -999) - (bestEv(byStat[a][0]) ?? -999),
-  );
-  const chunks = [];
-  let featured = true;
-  for (const stat of order) {
-    const list = topPerStat ? byStat[stat].slice(0, topPerStat) : byStat[stat];
-    chunks.push(sectionHeader(stat, list.length));
-    for (const p of list) {
-      chunks.push(cardHtml(p, { featured, showStat: false }));
-      featured = false;
-    }
-  }
-  return chunks.join("");
+    )
+    .sort(SORTERS[state.sort] || SORTERS.ev);
 }
 
 function gameList() {
   const games = {};
-  for (const p of state.plays) {
+  for (const p of basePlays()) {
     const mu = matchup(p);
     const g = (games[mu.key] = games[mu.key] || {
       key: mu.key,
       away: mu.away,
       home: mu.home,
-      plays: [],
+      plays: 0,
       rec: 0,
     });
-    g.plays.push(p);
+    g.plays++;
     if (p.recommended_side) g.rec++;
   }
   return Object.values(games).sort(
@@ -335,17 +334,26 @@ function gameList() {
   );
 }
 
+// --- render --------------------------------------------------------------------
+
 function renderPlays() {
   const playsEl = document.getElementById("plays");
   const loadMore = document.getElementById("load-more");
   const meta = document.getElementById("results-count");
+  playsEl.classList.remove("cols2", "cols3");
 
   if (state.view === "digest") {
-    const rec = state.plays.filter((p) => p.recommended_side);
+    playsEl.classList.add("cols3");
+    const rec = basePlays()
+      .filter((p) => p.recommended_side)
+      .sort(
+        state.dsort === "prob"
+          ? SORTERS.prob
+          : SORTERS.ev,
+      );
     playsEl.innerHTML = rec.length
-      ? renderGrouped(rec, { topPerStat: 2 })
+      ? rec.map(miniHtml).join("")
       : '<div class="empty-state">No recommended plays on this slate.</div>';
-    meta.textContent = `${rec.length} recommended`;
     loadMore.hidden = true;
     return;
   }
@@ -363,31 +371,19 @@ function renderPlays() {
               </span>
               <span class="game-counts">
                 ${g.rec ? `<span class="rec-n">${g.rec} picks</span>` : ""}
-                <span class="prop-n">${g.plays.length} props</span>
+                <span class="prop-n">${g.plays} props</span>
               </span>
             </button>`,
           )
           .join("")
       : '<div class="empty-state">No games on this slate.</div>';
-    meta.textContent = `${games.length} games`;
     loadMore.hidden = true;
     return;
   }
 
-  if (state.view === "game") {
-    const gplays = state.plays.filter(
-      (p) => matchup(p).key === state.game,
-    );
-    playsEl.innerHTML = gplays.length
-      ? renderGrouped(gplays)
-      : '<div class="empty-state">No props for this game.</div>';
-    meta.textContent = `${gplays.length} props`;
-    loadMore.hidden = true;
-    return;
-  }
-
-  // browse
-  const visible = visiblePlays();
+  // browse (optionally scoped to one game)
+  playsEl.classList.add("cols2");
+  const visible = browsePlays();
   const slice = visible.slice(0, state.limit);
   const featured =
     state.filter === "value" && state.sort === "ev" && !state.search
@@ -400,23 +396,19 @@ function renderPlays() {
   loadMore.hidden = visible.length <= state.limit;
 }
 
-// --- chrome --------------------------------------------------------------------
-
 function syncChrome() {
   document.getElementById("browse-controls").hidden = state.view !== "browse";
-  document.getElementById("game-bar").hidden = state.view !== "game";
+  document.getElementById("digest-sort").hidden = state.view !== "digest";
+  document.getElementById("game-bar").hidden = !state.game;
   document
     .querySelectorAll("#view-tabs .view-tab")
-    .forEach((t) =>
-      t.classList.toggle(
-        "active",
-        t.dataset.view === (state.view === "game" ? "games" : state.view),
-      ),
-    );
+    .forEach((t) => t.classList.toggle("active", t.dataset.view === state.view));
 }
 
 function setView(view) {
+  // Switching views clears the single-game scope (fixes stale game bar).
   state.view = view;
+  if (view !== "browse") state.game = null;
   state.limit = PAGE_SIZE;
   syncChrome();
   renderPlays();
@@ -424,26 +416,22 @@ function setView(view) {
 }
 
 function openGame(key) {
+  // Games drill down into the regular Browse view, scoped to that game.
   state.game = key;
-  state.view = "game";
-  const g = gameList().find((x) => x.key === key);
-  document.getElementById("game-title").textContent = g
-    ? `${g.away} @ ${g.home}`
-    : key;
+  state.view = "browse";
+  state.limit = PAGE_SIZE;
+  document.getElementById("game-title").textContent = key.replace("@", " @ ");
   syncChrome();
+  renderTabs();
   renderPlays();
   window.scrollTo({ top: 0 });
 }
 
 function renderTabs() {
-  const counts = {
-    value: 0,
-    milestones: 0,
-    overs: 0,
-    unders: 0,
-    all: state.plays.length,
-  };
-  for (const p of state.plays) {
+  const counts = { value: 0, milestones: 0, overs: 0, unders: 0, all: 0 };
+  for (const p of basePlays()) {
+    if (!inGame(p)) continue;
+    counts.all++;
     if (p.recommended_side) counts.value++;
     if (p.milestone && p.milestone.triggered) counts.milestones++;
     if (p.recommended_side === "over") counts.overs++;
@@ -456,13 +444,14 @@ function renderTabs() {
   });
 
   const statCounts = {};
-  for (const p of state.plays) {
+  for (const p of basePlays()) {
+    if (!inGame(p)) continue;
     statCounts[p.stat] = (statCounts[p.stat] || 0) + 1;
   }
   const order = Object.keys(STAT_LABELS).filter((s) => statCounts[s]);
   const tabsEl = document.getElementById("stat-tabs");
   tabsEl.innerHTML =
-    `<button class="tab stat-tab${state.stat === null ? " active" : ""}" data-stat="">All stats</button>` +
+    `<button class="tab stat-tab${state.stat === null ? " active" : ""}" data-stat="">All</button>` +
     order
       .map(
         (s) =>
@@ -492,11 +481,9 @@ function renderModelRecord(stats, calibration) {
   const a = (stats && stats.accuracy) || {};
   const parts = [];
   if (calibration && calibration.min_ev_pct != null) {
-    const sup = (calibration.suppressed_markets || []).join(", ");
     parts.push(
       `<span class="rec-chip">EV ≥ ${calibration.min_ev_pct}%` +
-        `${calibration.ran ? " · calibrated today" : ""}</span>` +
-        (sup ? `<span class="rec-chip neg">off: ${sup}</span>` : ""),
+        `${calibration.ran ? " · calibrated today" : ""}</span>`,
     );
   }
   if (r.bets > 0) {
@@ -546,8 +533,22 @@ document.getElementById("plays").addEventListener("click", (e) => {
   if (gc) openGame(gc.dataset.game);
 });
 
-document.getElementById("game-back").addEventListener("click", () => {
-  setView("games");
+document.getElementById("game-clear").addEventListener("click", () => {
+  state.game = null;
+  state.limit = PAGE_SIZE;
+  syncChrome();
+  renderTabs();
+  renderPlays();
+});
+
+document.getElementById("digest-sort").addEventListener("click", (e) => {
+  const btn = e.target.closest("[data-dsort]");
+  if (!btn) return;
+  state.dsort = btn.dataset.dsort;
+  document
+    .querySelectorAll("#digest-sort .tab")
+    .forEach((t) => t.classList.toggle("active", t === btn));
+  renderPlays();
 });
 
 document.getElementById("filter-tabs").addEventListener("click", (e) => {
