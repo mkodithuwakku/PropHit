@@ -60,8 +60,10 @@ const SMART_FILTERS = [
 const PAGE_SIZE = 40;
 
 const state = {
+  view: "digest", // digest | games | game | browse
+  game: null, // matchup key when view === "game"
   filter: "value",
-  stat: null, // null = all stats
+  stat: null, // null = all stats (browse)
   search: "",
   sort: "ev",
   limit: PAGE_SIZE,
@@ -101,11 +103,6 @@ function bestEv(play) {
   return ev === -999 ? null : ev;
 }
 
-function favoredSide(play) {
-  if (play.recommended_side) return play.recommended_side;
-  return (play.p_over || 0) >= 0.5 ? "over" : "under";
-}
-
 function fmtSigned(v, digits = 1) {
   if (v == null) return "—";
   return `${v >= 0 ? "+" : ""}${Number(v).toFixed(digits)}`;
@@ -123,7 +120,14 @@ function logoImg(abbr) {
     : "";
 }
 
-function cardHtml(play, featured) {
+function matchup(play) {
+  // "AWAY@HOME" key + display parts, resolved from the player's side.
+  const home = play.is_home ? play.team_abbr : play.opponent_abbr;
+  const away = play.is_home ? play.opponent_abbr : play.team_abbr;
+  return { key: `${away}@${home}`, away, home };
+}
+
+function cardHtml(play, { featured = false, showStat = true } = {}) {
   const stat = STAT_LABELS[play.stat] || play.stat;
   const loc = play.is_home ? "vs" : "@";
   const evShown = bestEv(play);
@@ -211,16 +215,16 @@ function cardHtml(play, featured) {
       <span class="chip ${play.market_suppressed || play.low_confidence ? "ev-caution" : evChipClass(evShown)}">${chipText}</span>
     </div>
     <div class="stat-row">
-      <span class="stat-badge ${play.stat}">${stat}</span>
-      <div class="line-model">Line <b>${play.line}</b> → Model <b>${play.model_mean}</b>
+      ${showStat ? `<span class="stat-badge ${play.stat}">${stat}</span>` : ""}
+      <div class="line-model"><b>${play.line}</b> → <b>${play.model_mean}</b>
         <span class="edge-arrow ${arrow}">${edge >= 0 ? "▲" : "▼"} ${fmtSigned(edge)}</span>
       </div>
     </div>
     <div class="prob-bar"><div class="prob-fill${underFavored ? " under" : ""}"
       style="width:${favoredPct}%"></div></div>
     <div class="prob-labels">
-      <span class="${underFavored ? "" : "favored"}">Over ${pOver.toFixed(1)}%</span>
-      <span class="${underFavored ? "favored" : ""}">Under ${pUnder.toFixed(1)}%</span>
+      <span class="${underFavored ? "" : "favored"}">O ${pOver.toFixed(1)}%</span>
+      <span class="${underFavored ? "favored" : ""}">U ${pUnder.toFixed(1)}%</span>
     </div>
     ${m.triggered ? '<div class="milestone-flag">MILESTONE ALERT</div>' : ""}
     <details class="tray"><summary>Factors</summary>
@@ -230,7 +234,7 @@ function cardHtml(play, featured) {
   </article>`;
 }
 
-// --- filtering / sorting pipeline -------------------------------------------
+// --- browse pipeline ----------------------------------------------------------
 
 function matchesFilter(play) {
   switch (state.filter) {
@@ -258,26 +262,178 @@ function matchesSearch(play) {
 }
 
 const SORTERS = {
+  // EV%: expected profit per $1 risked at the offered odds — highest first
   ev: (a, b) => (bestEv(b) ?? -999) - (bestEv(a) ?? -999),
+  // Probability: model's chance the favored side hits — most likely first
   prob: (a, b) =>
     Math.max(b.p_over || 0, b.p_under || 0) -
     Math.max(a.p_over || 0, a.p_under || 0),
+  // Edge: distance between model mean and the line — biggest gaps first
   edge: (a, b) => Math.abs(b.model_edge || 0) - Math.abs(a.model_edge || 0),
   name: (a, b) => (a.player_name || "").localeCompare(b.player_name || ""),
 };
 
+function sortByState(plays) {
+  return [...plays].sort(SORTERS[state.sort] || SORTERS.ev);
+}
+
 function visiblePlays() {
-  return state.plays
-    .filter(
+  return sortByState(
+    state.plays.filter(
       (p) =>
         matchesFilter(p) &&
         (state.stat === null || p.stat === state.stat) &&
         matchesSearch(p),
-    )
-    .sort(SORTERS[state.sort] || SORTERS.ev);
+    ),
+  );
 }
 
-// --- rendering ---------------------------------------------------------------
+// --- view renderers ------------------------------------------------------------
+
+function sectionHeader(stat, count) {
+  const label = STAT_LABELS[stat] || stat;
+  return `<div class="section-header"><span class="stat-badge ${stat}">${label}</span><span class="section-n">${count} pick${count === 1 ? "" : "s"}</span></div>`;
+}
+
+function renderGrouped(plays, { topPerStat = null } = {}) {
+  const byStat = {};
+  for (const p of sortByState(plays)) {
+    (byStat[p.stat] = byStat[p.stat] || []).push(p);
+  }
+  const order = Object.keys(byStat).sort(
+    (a, b) => (bestEv(byStat[b][0]) ?? -999) - (bestEv(byStat[a][0]) ?? -999),
+  );
+  const chunks = [];
+  let featured = true;
+  for (const stat of order) {
+    const list = topPerStat ? byStat[stat].slice(0, topPerStat) : byStat[stat];
+    chunks.push(sectionHeader(stat, list.length));
+    for (const p of list) {
+      chunks.push(cardHtml(p, { featured, showStat: false }));
+      featured = false;
+    }
+  }
+  return chunks.join("");
+}
+
+function gameList() {
+  const games = {};
+  for (const p of state.plays) {
+    const mu = matchup(p);
+    const g = (games[mu.key] = games[mu.key] || {
+      key: mu.key,
+      away: mu.away,
+      home: mu.home,
+      plays: [],
+      rec: 0,
+    });
+    g.plays.push(p);
+    if (p.recommended_side) g.rec++;
+  }
+  return Object.values(games).sort(
+    (a, b) => b.rec - a.rec || a.key.localeCompare(b.key),
+  );
+}
+
+function renderPlays() {
+  const playsEl = document.getElementById("plays");
+  const loadMore = document.getElementById("load-more");
+  const meta = document.getElementById("results-count");
+
+  if (state.view === "digest") {
+    const rec = state.plays.filter((p) => p.recommended_side);
+    playsEl.innerHTML = rec.length
+      ? renderGrouped(rec, { topPerStat: 2 })
+      : '<div class="empty-state">No recommended plays on this slate.</div>';
+    meta.textContent = `${rec.length} recommended`;
+    loadMore.hidden = true;
+    return;
+  }
+
+  if (state.view === "games") {
+    const games = gameList();
+    playsEl.innerHTML = games.length
+      ? games
+          .map(
+            (g) => `<button class="game-card" data-game="${g.key}">
+              <span class="game-teams">
+                ${logoImg(g.away)}<b>${g.away}</b>
+                <span class="game-at">@</span>
+                ${logoImg(g.home)}<b>${g.home}</b>
+              </span>
+              <span class="game-counts">
+                ${g.rec ? `<span class="rec-n">${g.rec} picks</span>` : ""}
+                <span class="prop-n">${g.plays.length} props</span>
+              </span>
+            </button>`,
+          )
+          .join("")
+      : '<div class="empty-state">No games on this slate.</div>';
+    meta.textContent = `${games.length} games`;
+    loadMore.hidden = true;
+    return;
+  }
+
+  if (state.view === "game") {
+    const gplays = state.plays.filter(
+      (p) => matchup(p).key === state.game,
+    );
+    playsEl.innerHTML = gplays.length
+      ? renderGrouped(gplays)
+      : '<div class="empty-state">No props for this game.</div>';
+    meta.textContent = `${gplays.length} props`;
+    loadMore.hidden = true;
+    return;
+  }
+
+  // browse
+  const visible = visiblePlays();
+  const slice = visible.slice(0, state.limit);
+  const featured =
+    state.filter === "value" && state.sort === "ev" && !state.search
+      ? slice[0]
+      : null;
+  playsEl.innerHTML = slice.length
+    ? slice.map((p) => cardHtml(p, { featured: p === featured })).join("")
+    : '<div class="empty-state">No plays match these filters.</div>';
+  meta.textContent = `${Math.min(state.limit, visible.length)} of ${visible.length}`;
+  loadMore.hidden = visible.length <= state.limit;
+}
+
+// --- chrome --------------------------------------------------------------------
+
+function syncChrome() {
+  document.getElementById("browse-controls").hidden = state.view !== "browse";
+  document.getElementById("game-bar").hidden = state.view !== "game";
+  document
+    .querySelectorAll("#view-tabs .view-tab")
+    .forEach((t) =>
+      t.classList.toggle(
+        "active",
+        t.dataset.view === (state.view === "game" ? "games" : state.view),
+      ),
+    );
+}
+
+function setView(view) {
+  state.view = view;
+  state.limit = PAGE_SIZE;
+  syncChrome();
+  renderPlays();
+  window.scrollTo({ top: 0 });
+}
+
+function openGame(key) {
+  state.game = key;
+  state.view = "game";
+  const g = gameList().find((x) => x.key === key);
+  document.getElementById("game-title").textContent = g
+    ? `${g.away} @ ${g.home}`
+    : key;
+  syncChrome();
+  renderPlays();
+  window.scrollTo({ top: 0 });
+}
 
 function renderTabs() {
   const counts = {
@@ -315,24 +471,6 @@ function renderTabs() {
       .join("");
 }
 
-function renderPlays() {
-  const visible = visiblePlays();
-  const slice = visible.slice(0, state.limit);
-  const featured =
-    state.filter === "value" && state.sort === "ev" && !state.search
-      ? slice[0]
-      : null;
-  const playsEl = document.getElementById("plays");
-  playsEl.innerHTML = slice.length
-    ? slice.map((p) => cardHtml(p, p === featured)).join("")
-    : '<div class="empty-state">No plays match these filters.</div>';
-
-  document.getElementById("results-count").textContent =
-    `${Math.min(state.limit, visible.length)} of ${visible.length}`;
-  document.getElementById("load-more").hidden =
-    visible.length <= state.limit;
-}
-
 function renderSlate(slate) {
   state.plays = slate.plays || [];
   document.getElementById("slate-date").textContent = slate.date || "";
@@ -343,6 +481,7 @@ function renderSlate(slate) {
   }
   renderModelRecord(slate.model_stats, slate.calibration);
   renderTabs();
+  syncChrome();
   renderPlays();
 }
 
@@ -394,7 +533,22 @@ async function loadSlate() {
   }
 }
 
-// --- events ------------------------------------------------------------------
+// --- events --------------------------------------------------------------------
+
+document.getElementById("view-tabs").addEventListener("click", (e) => {
+  const btn = e.target.closest(".view-tab");
+  if (!btn) return;
+  setView(btn.dataset.view);
+});
+
+document.getElementById("plays").addEventListener("click", (e) => {
+  const gc = e.target.closest(".game-card");
+  if (gc) openGame(gc.dataset.game);
+});
+
+document.getElementById("game-back").addEventListener("click", () => {
+  setView("games");
+});
 
 document.getElementById("filter-tabs").addEventListener("click", (e) => {
   const btn = e.target.closest(".tab");

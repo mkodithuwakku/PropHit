@@ -22,31 +22,44 @@
       </header>
 
       <div class="controls">
-        <div class="search-wrap">
-          <span class="search-icon">⌕</span>
-          <input
-            id="search"
-            type="search"
-            placeholder="Search player or team…"
-            autocomplete="off"
-          />
-        </div>
-        <nav class="filter-tabs" id="filter-tabs" aria-label="Play filters">
-          <button data-filter="value" class="tab active"></button>
-          <button data-filter="milestones" class="tab"></button>
-          <button data-filter="overs" class="tab"></button>
-          <button data-filter="unders" class="tab"></button>
-          <button data-filter="all" class="tab"></button>
+        <nav class="view-tabs" id="view-tabs" aria-label="Views">
+          <button data-view="digest" class="view-tab active">Best Picks</button>
+          <button data-view="games" class="view-tab">Games</button>
+          <button data-view="browse" class="view-tab">Browse</button>
         </nav>
-        <nav class="stat-tabs" id="stat-tabs" aria-label="Stat filters"></nav>
-        <div class="results-meta">
-          <span id="results-count"></span>
-          <select id="sort-select" aria-label="Sort plays">
-            <option value="ev">Sort: EV</option>
-            <option value="prob">Sort: Probability</option>
-            <option value="edge">Sort: Edge</option>
-            <option value="name">Sort: Player</option>
-          </select>
+
+        <div id="browse-controls" class="browse-controls">
+          <div class="search-wrap">
+            <span class="search-icon">⌕</span>
+            <input
+              id="search"
+              type="search"
+              placeholder="Search player or team…"
+              autocomplete="off"
+            />
+          </div>
+          <nav class="filter-tabs" id="filter-tabs" aria-label="Play filters">
+            <button data-filter="value" class="tab active"></button>
+            <button data-filter="milestones" class="tab"></button>
+            <button data-filter="overs" class="tab"></button>
+            <button data-filter="unders" class="tab"></button>
+            <button data-filter="all" class="tab"></button>
+          </nav>
+          <nav class="stat-tabs" id="stat-tabs" aria-label="Stat filters"></nav>
+          <div class="results-meta">
+            <span id="results-count"></span>
+            <select id="sort-select" aria-label="Sort plays">
+              <option value="ev">Sort: EV</option>
+              <option value="prob">Sort: Probability</option>
+              <option value="edge">Sort: Edge</option>
+              <option value="name">Sort: Player</option>
+            </select>
+          </div>
+        </div>
+
+        <div id="game-bar" class="game-bar" hidden>
+          <button id="game-back" class="game-back">‹ All games</button>
+          <span id="game-title" class="game-title"></span>
         </div>
       </div>
 

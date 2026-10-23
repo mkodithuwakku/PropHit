@@ -131,7 +131,7 @@ body {
   color: var(--edge-caution);
 }
 
-/* --- controls (sticky: search + tabs + meta) --- */
+/* --- controls (sticky: view tabs + browse tools) --- */
 .controls {
   position: sticky;
   top: 0;
@@ -141,6 +141,67 @@ body {
   -webkit-backdrop-filter: blur(14px);
   border-bottom: 1px solid var(--border);
   padding: 10px 16px 8px;
+}
+
+/* --- view tabs (segmented control) --- */
+.view-tabs {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 4px;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 4px;
+}
+
+.view-tab {
+  border: none;
+  background: transparent;
+  color: var(--text-muted);
+  border-radius: 8px;
+  padding: 7px 4px;
+  font-size: 0.8rem;
+  font-weight: 700;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+
+.view-tab.active {
+  color: #fff;
+  background: linear-gradient(
+    135deg,
+    rgba(139, 127, 212, 0.45),
+    rgba(139, 127, 212, 0.2)
+  );
+  box-shadow: 0 0 12px rgba(139, 127, 212, 0.22);
+}
+
+.browse-controls {
+  margin-top: 10px;
+}
+
+.game-bar {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin-top: 9px;
+}
+
+.game-back {
+  background: var(--bg-card);
+  color: var(--accent-bright);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 5px 12px;
+  font-size: 0.74rem;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.game-title {
+  font-size: 0.85rem;
+  font-weight: 800;
+  letter-spacing: 0.04em;
 }
 
 .search-wrap {
@@ -269,12 +330,92 @@ body {
   cursor: pointer;
 }
 
-/* --- play cards --- */
-.plays {
-  padding: 12px 14px 20px;
+/* --- section headers (digest/game views) --- */
+.section-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 2px 4px;
+  margin-top: 6px;
+}
+
+.section-header .stat-badge {
+  font-size: 0.74rem;
+  padding: 4px 10px;
+}
+
+.section-n {
+  font-size: 0.68rem;
+  font-weight: 700;
+  color: var(--text-muted);
+  letter-spacing: 0.05em;
+}
+
+/* --- game cards (games view) --- */
+.game-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  width: 100%;
+  text-align: left;
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 12px 14px;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.game-card:active {
+  transform: scale(0.99);
+  border-color: var(--accent);
+}
+
+.game-teams {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  font-size: 0.92rem;
+}
+
+.game-teams img {
+  width: 22px;
+  height: 22px;
+  object-fit: contain;
+}
+
+.game-at {
+  color: var(--text-muted);
+  font-size: 0.72rem;
+  font-weight: 600;
+}
+
+.game-counts {
   display: flex;
   flex-direction: column;
-  gap: 14px;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.rec-n {
+  font-size: 0.7rem;
+  font-weight: 800;
+  color: var(--edge-positive);
+}
+
+.prop-n {
+  font-size: 0.66rem;
+  color: var(--text-muted);
+}
+
+/* --- play cards --- */
+.plays {
+  padding: 10px 14px 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .play-card {
@@ -286,8 +427,8 @@ body {
   );
   border: 1px solid var(--border);
   border-left: 3px solid var(--team);
-  border-radius: 14px;
-  padding: 14px;
+  border-radius: 12px;
+  padding: 11px 12px;
   overflow: hidden;
 }
 
@@ -315,13 +456,13 @@ body {
 .card-top {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 9px;
 }
 
 .avatar {
   position: relative;
-  width: 52px;
-  height: 52px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   flex-shrink: 0;
   background: linear-gradient(160deg, #2b2938, #1b1924);
@@ -365,7 +506,7 @@ body {
 
 .player-name {
   font-weight: 700;
-  font-size: 0.98rem;
+  font-size: 0.92rem;
   letter-spacing: 0.01em;
 }
 
@@ -374,20 +515,20 @@ body {
   align-items: center;
   gap: 5px;
   color: var(--text-muted);
-  font-size: 0.74rem;
-  margin-top: 3px;
+  font-size: 0.72rem;
+  margin-top: 2px;
 }
 
 .player-meta img {
-  width: 16px;
-  height: 16px;
+  width: 15px;
+  height: 15px;
   object-fit: contain;
 }
 
 .chip {
   border-radius: 999px;
-  padding: 5px 11px;
-  font-size: 0.72rem;
+  padding: 4px 9px;
+  font-size: 0.68rem;
   font-weight: 800;
   white-space: nowrap;
   letter-spacing: 0.02em;
@@ -413,8 +554,8 @@ body {
 .stat-row {
   display: flex;
   align-items: center;
-  gap: 10px;
-  margin-top: 12px;
+  gap: 9px;
+  margin-top: 8px;
 }
 
 .stat-badge {
@@ -437,13 +578,13 @@ body {
 .stat-badge.tov { background: rgba(154, 150, 168, 0.16); color: #b6b2c2; }
 
 .line-model {
-  font-size: 0.9rem;
+  font-size: 0.86rem;
   color: var(--text-muted);
 }
 
 .line-model b {
   color: var(--accent-bright);
-  font-size: 1rem;
+  font-size: 0.94rem;
 }
 
 .edge-arrow {
@@ -457,8 +598,8 @@ body {
 
 /* --- win probability bar --- */
 .prob-bar {
-  margin-top: 10px;
-  height: 6px;
+  margin-top: 7px;
+  height: 5px;
   border-radius: 999px;
   background: rgba(154, 150, 168, 0.18);
   overflow: hidden;
@@ -479,8 +620,8 @@ body {
 .prob-labels {
   display: flex;
   justify-content: space-between;
-  margin-top: 5px;
-  font-size: 0.72rem;
+  margin-top: 4px;
+  font-size: 0.7rem;
   color: var(--text-muted);
 }
 
@@ -508,9 +649,9 @@ body {
 
 /* --- expandable trays --- */
 details.tray {
-  margin-top: 10px;
+  margin-top: 8px;
   border-top: 1px solid var(--border);
-  padding-top: 8px;
+  padding-top: 6px;
 }
 
 details.tray summary {
