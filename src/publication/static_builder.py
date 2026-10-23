@@ -55,10 +55,19 @@ class SlateGenerator:
         self.db = db
         self.store = FeatureStore(db)
         self.dist = DistributionEngine()
-        self.ev = EVCalculator(min_ev_pct=min_ev_pct)
+        # Calibration overrides (model_settings table) take precedence over
+        # the constructor default so bi-weekly tuning applies automatically.
+        from src.evaluation.calibrate import (
+            get_min_ev,
+            get_suppressed_markets,
+        )
+
+        effective_ev = get_min_ev(db, fallback=min_ev_pct)
+        self.ev = EVCalculator(min_ev_pct=effective_ev)
         self.ladder = MilestoneEngine()
         self.history_games = history_games
-        self.min_ev_pct = min_ev_pct
+        self.min_ev_pct = effective_ev
+        self.suppressed_markets = set(get_suppressed_markets(db))
         # Empirical-Bayes shrinkage: with thin box-score history the market
         # line is the best prior, so model means are pulled toward it.
         # weight_model = n / (n + prior_games); at n=20 the model gets ~77%.
@@ -273,6 +282,9 @@ class SlateGenerator:
             )
             if low_conf:
                 ladder = {**ladder, "triggered": False}
+            suppressed = stat in self.suppressed_markets
+            if suppressed:
+                ladder = {**ladder, "triggered": False}
 
             player = self.db.query_one(
                 "SELECT p.*, t.abbreviation AS team_abbr FROM dim_players p "
@@ -311,12 +323,15 @@ class SlateGenerator:
                     "ev_over_pct": ev["ev_over_pct"],
                     "ev_under_pct": ev["ev_under_pct"],
                     "fair_over_american": ev["fair_over_american"],
-                    "recommended_side": (None if low_conf else ev["recommended_side"]),
+                    "recommended_side": (
+                        None if (low_conf or suppressed) else ev["recommended_side"]
+                    ),
                     "recommended_ev_pct": (
-                        None if low_conf else ev["recommended_ev_pct"]
+                        None if (low_conf or suppressed) else ev["recommended_ev_pct"]
                     ),
                     "low_confidence": low_conf,
                     "confidence_reasons": conf_reasons,
+                    "market_suppressed": suppressed,
                     "factors": self._factor_block(
                         feats, opp_id, stat, game_date, minutes
                     ),

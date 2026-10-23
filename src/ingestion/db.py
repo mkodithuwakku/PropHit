@@ -164,6 +164,13 @@ CREATE TABLE IF NOT EXISTS ingestion_runs (
     status           TEXT NOT NULL DEFAULT 'running',
     notes            TEXT
 );
+
+CREATE TABLE IF NOT EXISTS model_settings (
+    key              TEXT PRIMARY KEY,
+    value            TEXT NOT NULL,
+    updated_at       TEXT NOT NULL,
+    reason           TEXT
+);
 """
 
 
@@ -224,6 +231,26 @@ class ProphitDB:
 
     def query_one(self, sql: str, params: tuple = ()) -> Optional[sqlite3.Row]:
         return self._conn.execute(sql, params).fetchone()
+
+    # --- runtime calibration settings --------------------------------------
+
+    def get_setting(self, key: str) -> Optional[str]:
+        row = self.query_one("SELECT value FROM model_settings WHERE key = ?", (key,))
+        return row["value"] if row else None
+
+    def set_setting(self, key: str, value: str, reason: str = "") -> None:
+        self.execute(
+            """
+            INSERT INTO model_settings (key, value, updated_at, reason)
+            VALUES (?, ?, ?, ?)
+            ON CONFLICT(key) DO UPDATE SET
+                value = excluded.value,
+                updated_at = excluded.updated_at,
+                reason = excluded.reason
+            """,
+            (key, str(value), utcnow_iso(), reason),
+        )
+        self._conn.commit()
 
     # --- dimension upserts -------------------------------------------------
 

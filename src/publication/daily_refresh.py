@@ -103,13 +103,19 @@ def run_refresh(
     try:
         ingest = maybe_ingest_live(db, game_date) if live else {"ingested": False}
 
+        from src.evaluation.calibrate import run_calibration
         from src.evaluation.record import summarize_model_stats
 
-        plays = SlateGenerator(db, min_ev_pct=min_ev_pct).generate_plays(game_date)
+        # Bi-weekly self-calibration: skips itself when <14d since last run.
+        calibration = run_calibration(db)
+
+        generator = SlateGenerator(db, min_ev_pct=min_ev_pct)
+        plays = generator.generate_plays(game_date)
         slate = {
             "date": game_date,
             "plays": plays,
-            "model_stats": summarize_model_stats(db, min_ev_pct, game_date),
+            "model_stats": summarize_model_stats(db, generator.min_ev_pct, game_date),
+            "calibration": calibration,
         }
         build = StaticSiteBuilder(out_dir).build(slate)
 
@@ -130,6 +136,7 @@ def run_refresh(
             "out_dir": build["out_dir"],
             "files": build["files"],
             "publish": publish_result,
+            "calibration": calibration,
         }
     finally:
         db.close()

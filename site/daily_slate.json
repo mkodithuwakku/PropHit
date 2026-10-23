@@ -27,6 +27,7 @@
       "confidence_reasons": [
         "no games played this season"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 28.7,
         "dvp_rank": null,
@@ -83,10 +84,11 @@
       "ev_over_pct": 59.521591042177555,
       "ev_under_pct": -66.73468010080093,
       "fair_over_american": -435,
-      "recommended_side": "over",
-      "recommended_ev_pct": 59.521591042177555,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 31.3,
         "dvp_rank": null,
@@ -96,7 +98,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.8132473268816894,
           "fair_american": -435
@@ -143,10 +145,11 @@
       "ev_over_pct": 52.030390502843524,
       "ev_under_pct": -69.66259287345461,
       "fair_over_american": -544,
-      "recommended_side": "over",
-      "recommended_ev_pct": 52.030390502843524,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 23.2,
         "dvp_rank": null,
@@ -156,7 +159,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.8446132805713529,
           "fair_american": -544
@@ -200,13 +203,14 @@
       "p_under": 0.7701,
       "over_price": -128,
       "under_price": -104,
-      "ev_over_pct": -59.04318727209626,
-      "ev_under_pct": 51.051607036478494,
+      "ev_over_pct": -59.043187272096255,
+      "ev_under_pct": 51.05160703647849,
       "fair_over_american": 335,
-      "recommended_side": "under",
-      "recommended_ev_pct": 51.051607036478494,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 31.9,
         "dvp_rank": null,
@@ -269,6 +273,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 28.6,
         "dvp_rank": null,
@@ -322,8 +327,8 @@
       "p_under": 0.734,
       "over_price": -125,
       "under_price": -105,
-      "ev_over_pct": -52.123035424193,
-      "ev_under_pct": 43.30805429608235,
+      "ev_over_pct": -52.123035424192985,
+      "ev_under_pct": 43.308054296082354,
       "fair_over_american": 276,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -331,6 +336,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 27.2,
         "dvp_rank": null,
@@ -384,13 +390,14 @@
       "p_under": 0.2393,
       "over_price": -114,
       "under_price": -114,
-      "ev_over_pct": 42.80572163638047,
-      "ev_under_pct": -55.08642339076643,
+      "ev_over_pct": 42.805721636380476,
+      "ev_under_pct": -55.086423390766434,
       "fair_over_american": -318,
-      "recommended_side": "over",
-      "recommended_ev_pct": 42.80572163638047,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 34.0,
         "dvp_rank": null,
@@ -400,7 +407,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.7607407601190361,
           "fair_american": -318
@@ -447,10 +454,11 @@
       "ev_over_pct": 41.78447634548188,
       "ev_under_pct": -53.638062617975926,
       "fair_over_american": -298,
-      "recommended_side": "over",
-      "recommended_ev_pct": 41.78447634548188,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 23.3,
         "dvp_rank": null,
@@ -460,7 +468,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.7490500637119798,
           "fair_american": -298
@@ -504,13 +512,14 @@
       "p_under": 0.2455,
       "over_price": -115,
       "under_price": -115,
-      "ev_over_pct": 41.06797496169033,
+      "ev_over_pct": 41.067974961690325,
       "ev_under_pct": -54.111453222559916,
       "fair_over_american": -307,
-      "recommended_side": "over",
-      "recommended_ev_pct": 41.06797496169033,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.4,
         "dvp_rank": null,
@@ -520,7 +529,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.7545496335160181,
           "fair_american": -307
@@ -567,10 +576,11 @@
       "ev_over_pct": 39.25103842610267,
       "ev_under_pct": -48.3826646952849,
       "fair_over_american": -249,
-      "recommended_side": "over",
-      "recommended_ev_pct": 39.25103842610267,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 25.8,
         "dvp_rank": null,
@@ -580,7 +590,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.7132370260849161,
           "fair_american": -249
@@ -634,6 +644,7 @@
         "thin sample (7 games)",
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 10.6,
         "dvp_rank": null,
@@ -688,12 +699,13 @@
       "over_price": -112,
       "under_price": -118,
       "ev_over_pct": -52.436742748542684,
-      "ev_under_pct": 38.32329353007747,
+      "ev_under_pct": 38.323293530077464,
       "fair_over_american": 298,
-      "recommended_side": "under",
-      "recommended_ev_pct": 38.32329353007747,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 25.5,
         "dvp_rank": null,
@@ -747,13 +759,14 @@
       "p_under": 0.7068,
       "over_price": -127,
       "under_price": -105,
-      "ev_over_pct": -47.58818277065376,
-      "ev_under_pct": 37.98860240964844,
+      "ev_over_pct": -47.588182770653766,
+      "ev_under_pct": 37.98860240964843,
       "fair_over_american": 241,
-      "recommended_side": "under",
-      "recommended_ev_pct": 37.98860240964844,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 24.4,
         "dvp_rank": null,
@@ -807,13 +820,14 @@
       "p_under": 0.75,
       "over_price": -112,
       "under_price": -120,
-      "ev_over_pct": -52.67093962242936,
-      "ev_under_pct": 37.492608187761775,
+      "ev_over_pct": -52.67093962242937,
+      "ev_under_pct": 37.49260818776179,
       "fair_over_american": 300,
-      "recommended_side": "under",
-      "recommended_ev_pct": 37.492608187761775,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 27.7,
         "dvp_rank": null,
@@ -870,10 +884,11 @@
       "ev_over_pct": -50.35014662811115,
       "ev_under_pct": 37.30666836724157,
       "fair_over_american": 277,
-      "recommended_side": "under",
-      "recommended_ev_pct": 37.30666836724157,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 12.4,
         "dvp_rank": null,
@@ -928,12 +943,13 @@
       "over_price": -130,
       "under_price": -102,
       "ev_over_pct": -45.73087262962204,
-      "ev_under_pct": 37.29295461440218,
+      "ev_under_pct": 37.292954614402184,
       "fair_over_american": 226,
-      "recommended_side": "under",
-      "recommended_ev_pct": 37.29295461440218,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 29.5,
         "dvp_rank": null,
@@ -988,12 +1004,13 @@
       "over_price": -136,
       "under_price": 102,
       "ev_over_pct": -44.182722403950855,
-      "ev_under_pct": 37.0249046559889,
+      "ev_under_pct": 37.02490465598891,
       "fair_over_american": 211,
-      "recommended_side": "under",
-      "recommended_ev_pct": 37.0249046559889,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 19.9,
         "dvp_rank": null,
@@ -1047,7 +1064,7 @@
       "p_under": 0.6804,
       "over_price": -132,
       "under_price": 100,
-      "ev_over_pct": -43.830968018984024,
+      "ev_over_pct": -43.83096801898402,
       "ev_under_pct": 36.08351533194734,
       "fair_over_american": 213,
       "recommended_side": null,
@@ -1056,6 +1073,7 @@
       "confidence_reasons": [
         "thin sample (1 games)"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 28.0,
         "dvp_rank": null,
@@ -1109,13 +1127,14 @@
       "p_under": 0.2814,
       "over_price": -112,
       "under_price": -118,
-      "ev_over_pct": 36.02520156772119,
-      "ev_under_pct": -48.01692202900067,
+      "ev_over_pct": 36.0252015677212,
+      "ev_under_pct": -48.016922029000675,
       "fair_over_american": -255,
-      "recommended_side": "over",
-      "recommended_ev_pct": 36.02520156772119,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 29.0,
         "dvp_rank": null,
@@ -1125,7 +1144,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.7186237063955082,
           "fair_american": -255
@@ -1170,12 +1189,13 @@
       "over_price": -114,
       "under_price": -114,
       "ev_over_pct": -46.14851625485773,
-      "ev_under_pct": 33.86781450047177,
+      "ev_under_pct": 33.86781450047176,
       "fair_over_american": 249,
-      "recommended_side": "under",
-      "recommended_ev_pct": 33.86781450047177,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 25.0,
         "dvp_rank": null,
@@ -1230,12 +1250,13 @@
       "over_price": -114,
       "under_price": -114,
       "ev_over_pct": 33.414057746709666,
-      "ev_under_pct": -45.69475950109563,
+      "ev_under_pct": -45.694759501095625,
       "fair_over_american": -246,
-      "recommended_side": "over",
-      "recommended_ev_pct": 33.414057746709666,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 37.9,
         "dvp_rank": null,
@@ -1245,7 +1266,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.7107104010806029,
           "fair_american": -246
@@ -1290,12 +1311,13 @@
       "over_price": -108,
       "under_price": -122,
       "ev_over_pct": -47.82627475680171,
-      "ev_under_pct": 32.67192479386342,
+      "ev_under_pct": 32.671924793863404,
       "fair_over_american": 269,
-      "recommended_side": "under",
-      "recommended_ev_pct": 32.67192479386342,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 25.5,
         "dvp_rank": null,
@@ -1349,13 +1371,14 @@
       "p_under": 0.2959,
       "over_price": -115,
       "under_price": -115,
-      "ev_over_pct": 31.637855145983153,
-      "ev_under_pct": -44.68133340685274,
+      "ev_over_pct": 31.637855145983163,
+      "ev_under_pct": -44.68133340685273,
       "fair_over_american": -238,
-      "recommended_side": "over",
-      "recommended_ev_pct": 31.637855145983153,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.2,
         "dvp_rank": null,
@@ -1365,7 +1388,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.7041094577575844,
           "fair_american": -238
@@ -1412,10 +1435,11 @@
       "ev_over_pct": 31.52753188667221,
       "ev_under_pct": -41.822587786296396,
       "fair_over_american": -209,
-      "recommended_side": "over",
-      "recommended_ev_pct": 31.52753188667221,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.8,
         "dvp_rank": null,
@@ -1425,7 +1449,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.6767921543683133,
           "fair_american": -209
@@ -1472,10 +1496,11 @@
       "ev_over_pct": -38.91580399376884,
       "ev_under_pct": 30.893854547322785,
       "fair_over_american": 184,
-      "recommended_side": "under",
-      "recommended_ev_pct": 30.893854547322785,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 25.9,
         "dvp_rank": null,
@@ -1529,13 +1554,14 @@
       "p_under": 0.3023,
       "over_price": -115,
       "under_price": -115,
-      "ev_over_pct": 30.448073919679796,
-      "ev_under_pct": -43.49155218054937,
+      "ev_over_pct": 30.448073919679786,
+      "ev_under_pct": -43.49155218054938,
       "fair_over_american": -231,
-      "recommended_side": "over",
-      "recommended_ev_pct": 30.448073919679796,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 31.0,
         "dvp_rank": null,
@@ -1545,7 +1571,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.6977455116634036,
           "fair_american": -231
@@ -1592,10 +1618,11 @@
       "ev_over_pct": 30.057606453727814,
       "ev_under_pct": -47.996586654242,
       "fair_over_american": -285,
-      "recommended_side": "over",
-      "recommended_ev_pct": 30.057606453727814,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 35.7,
         "dvp_rank": null,
@@ -1605,7 +1632,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.73998293327121,
           "fair_american": -285
@@ -1652,10 +1679,11 @@
       "ev_over_pct": -44.15003602978589,
       "ev_under_pct": 29.19850503823087,
       "fair_over_american": 245,
-      "recommended_side": "under",
-      "recommended_ev_pct": 29.19850503823087,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 21.3,
         "dvp_rank": null,
@@ -1710,7 +1738,7 @@
       "over_price": -114,
       "under_price": -114,
       "ev_over_pct": -39.78089844059996,
-      "ev_under_pct": 27.500196686214007,
+      "ev_under_pct": 27.500196686213997,
       "fair_over_american": 212,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -1718,6 +1746,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 26.7,
         "dvp_rank": null,
@@ -1772,12 +1801,13 @@
       "over_price": -122,
       "under_price": -110,
       "ev_over_pct": 27.169067892731636,
-      "ev_under_pct": -42.5090712289838,
+      "ev_under_pct": -42.50907122898381,
       "fair_over_american": -232,
-      "recommended_side": "over",
-      "recommended_ev_pct": 27.169067892731636,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 29.5,
         "dvp_rank": null,
@@ -1787,7 +1817,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.6988570397708675,
           "fair_american": -232
@@ -1831,13 +1861,14 @@
       "p_under": 0.3581,
       "over_price": -102,
       "under_price": -130,
-      "ev_over_pct": 27.12233456365064,
+      "ev_over_pct": 27.122334563650654,
       "ev_under_pct": -36.64470559265971,
       "fair_over_american": -179,
-      "recommended_side": "over",
-      "recommended_ev_pct": 27.12233456365064,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 21.7,
         "dvp_rank": null,
@@ -1847,7 +1878,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.6419048576976418,
           "fair_american": -179
@@ -1891,13 +1922,14 @@
       "p_under": 0.651,
       "over_price": -125,
       "under_price": -106,
-      "ev_over_pct": -37.18837789486145,
+      "ev_over_pct": -37.188377894861446,
       "ev_under_pct": 26.524139655877676,
       "fair_over_american": 187,
-      "recommended_side": "under",
-      "recommended_ev_pct": 26.524139655877676,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 34.2,
         "dvp_rank": null,
@@ -1954,10 +1986,11 @@
       "ev_over_pct": 24.75426828326015,
       "ev_under_pct": -43.222426198208595,
       "fair_over_american": -256,
-      "recommended_side": "over",
-      "recommended_ev_pct": 24.75426828326015,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 28.6,
         "dvp_rank": null,
@@ -1967,7 +2000,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.7189229019713297,
           "fair_american": -256
@@ -2020,6 +2053,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 24.0,
         "dvp_rank": null,
@@ -2074,12 +2108,13 @@
       "over_price": -110,
       "under_price": -120,
       "ev_over_pct": -38.563766399671074,
-      "ev_under_pct": 24.33504551079525,
+      "ev_under_pct": 24.33504551079524,
       "fair_over_american": 211,
-      "recommended_side": "under",
-      "recommended_ev_pct": 24.33504551079525,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.8,
         "dvp_rank": null,
@@ -2133,7 +2168,7 @@
       "p_under": 0.3285,
       "over_price": -118,
       "under_price": -112,
-      "ev_over_pct": 24.05668526609074,
+      "ev_over_pct": 24.056685266090728,
       "ev_under_pct": -37.81954614255103,
       "fair_over_american": -204,
       "recommended_side": null,
@@ -2142,6 +2177,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 32.1,
         "dvp_rank": null,
@@ -2195,13 +2231,14 @@
       "p_under": 0.6807,
       "over_price": -108,
       "under_price": -122,
-      "ev_over_pct": -38.508893939935156,
-      "ev_under_pct": 23.86858610907493,
+      "ev_over_pct": -38.50889393993516,
+      "ev_under_pct": 23.86858610907492,
       "fair_over_american": 213,
-      "recommended_side": "under",
-      "recommended_ev_pct": 23.86858610907493,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 31.0,
         "dvp_rank": null,
@@ -2258,10 +2295,11 @@
       "ev_over_pct": 21.92276058443563,
       "ev_under_pct": -34.20346233882159,
       "fair_over_american": -185,
-      "recommended_side": "over",
-      "recommended_ev_pct": 21.92276058443563,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.4,
         "dvp_rank": null,
@@ -2271,7 +2309,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.6494950797488627,
           "fair_american": -185
@@ -2315,13 +2353,14 @@
       "p_under": 0.641,
       "over_price": -118,
       "under_price": -112,
-      "ev_over_pct": -33.67431718154547,
+      "ev_over_pct": -33.674317181545476,
       "ev_under_pct": 21.33014083443403,
       "fair_over_american": 179,
-      "recommended_side": "under",
-      "recommended_ev_pct": 21.33014083443403,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 29.8,
         "dvp_rank": null,
@@ -2378,10 +2417,11 @@
       "ev_over_pct": -30.38399533716888,
       "ev_under_pct": 21.303646902886552,
       "fair_over_american": 154,
-      "recommended_side": "under",
-      "recommended_ev_pct": 21.303646902886552,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 23.4,
         "dvp_rank": null,
@@ -2444,6 +2484,7 @@
       "confidence_reasons": [
         "thin sample (6 games)"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 26.7,
         "dvp_rank": null,
@@ -2497,13 +2538,14 @@
       "p_under": 0.3916,
       "over_price": -102,
       "under_price": -130,
-      "ev_over_pct": 20.490733567066865,
+      "ev_over_pct": 20.490733567066854,
       "ev_under_pct": -30.720205997082584,
       "fair_over_american": -155,
-      "recommended_side": "over",
-      "recommended_ev_pct": 20.490733567066865,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 33.1,
         "dvp_rank": null,
@@ -2567,6 +2609,7 @@
         "thin sample (7 games)",
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 17.2,
         "dvp_rank": null,
@@ -2621,12 +2664,13 @@
       "over_price": -114,
       "under_price": -114,
       "ev_over_pct": -31.887278994861255,
-      "ev_under_pct": 19.606577240475286,
+      "ev_under_pct": 19.606577240475296,
       "fair_over_american": 176,
-      "recommended_side": "under",
-      "recommended_ev_pct": 19.606577240475286,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 36.1,
         "dvp_rank": null,
@@ -2680,7 +2724,7 @@
       "p_under": 0.6009,
       "over_price": -130,
       "under_price": -102,
-      "ev_over_pct": -29.391148465333945,
+      "ev_over_pct": -29.39114846533395,
       "ev_under_pct": 19.003050242952657,
       "fair_over_american": 151,
       "recommended_side": null,
@@ -2689,6 +2733,7 @@
       "confidence_reasons": [
         "thin sample (1 games)"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 20.0,
         "dvp_rank": null,
@@ -2751,6 +2796,7 @@
       "confidence_reasons": [
         "thin sample (5 games)"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 25.3,
         "dvp_rank": null,
@@ -2807,10 +2853,11 @@
       "ev_over_pct": -31.514007296400482,
       "ev_under_pct": 18.4705290355309,
       "fair_over_american": 173,
-      "recommended_side": "under",
-      "recommended_ev_pct": 18.4705290355309,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 22.3,
         "dvp_rank": null,
@@ -2864,13 +2911,14 @@
       "p_under": 0.6507,
       "over_price": -108,
       "under_price": -122,
-      "ev_over_pct": -32.72794611999568,
-      "ev_under_pct": 18.40657456545619,
+      "ev_over_pct": -32.727946119995686,
+      "ev_under_pct": 18.406574565456204,
       "fair_over_american": 186,
-      "recommended_side": "under",
-      "recommended_ev_pct": 18.40657456545619,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.7,
         "dvp_rank": null,
@@ -2927,10 +2975,11 @@
       "ev_over_pct": 18.273022898562672,
       "ev_under_pct": -30.55372465294863,
       "fair_over_american": -170,
-      "recommended_side": "over",
-      "recommended_ev_pct": 18.273022898562672,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 25.8,
         "dvp_rank": null,
@@ -2940,7 +2989,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.6300525518895395,
           "fair_american": -170
@@ -2984,8 +3033,8 @@
       "p_under": 0.4082,
       "over_price": -102,
       "under_price": -130,
-      "ev_over_pct": 17.206042219044903,
-      "ev_under_pct": -27.785748303838293,
+      "ev_over_pct": 17.206042219044914,
+      "ev_under_pct": -27.785748303838286,
       "fair_over_american": -145,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -2993,6 +3042,7 @@
       "confidence_reasons": [
         "thin sample (1 games)"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 34.0,
         "dvp_rank": null,
@@ -3046,13 +3096,14 @@
       "p_under": 0.3865,
       "over_price": -110,
       "under_price": -120,
-      "ev_over_pct": 17.118261485442144,
-      "ev_under_pct": -29.137378093162685,
+      "ev_over_pct": 17.118261485442154,
+      "ev_under_pct": -29.137378093162692,
       "fair_over_american": -159,
-      "recommended_side": "over",
-      "recommended_ev_pct": 17.118261485442144,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 25.1,
         "dvp_rank": null,
@@ -3062,7 +3113,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.6134766077808874,
           "fair_american": -159
@@ -3106,7 +3157,7 @@
       "p_under": 0.353,
       "over_price": -125,
       "under_price": -105,
-      "ev_over_pct": 16.468305443663123,
+      "ev_over_pct": 16.468305443663112,
       "ev_under_pct": -31.08996093095735,
       "fair_over_american": -183,
       "recommended_side": null,
@@ -3115,6 +3166,7 @@
       "confidence_reasons": [
         "thin sample (1 games)"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 34.0,
         "dvp_rank": null,
@@ -3169,12 +3221,13 @@
       "over_price": -122,
       "under_price": -108,
       "ev_over_pct": 15.793813304708703,
-      "ev_under_pct": -29.962621222067405,
+      "ev_under_pct": -29.962621222067398,
       "fair_over_american": -175,
-      "recommended_side": "over",
-      "recommended_ev_pct": 15.793813304708703,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 31.9,
         "dvp_rank": null,
@@ -3184,7 +3237,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.6363443794222731,
           "fair_american": -175
@@ -3228,13 +3281,14 @@
       "p_under": 0.5787,
       "over_price": -130,
       "under_price": 100,
-      "ev_over_pct": -25.461284837595677,
+      "ev_over_pct": -25.461284837595688,
       "ev_under_pct": 15.738843729455976,
       "fair_over_american": 137,
       "recommended_side": "under",
       "recommended_ev_pct": 15.738843729455976,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": false,
       "factors": {
         "projected_minutes": 26.5,
         "dvp_rank": null,
@@ -3289,12 +3343,13 @@
       "over_price": -104,
       "under_price": -129,
       "ev_over_pct": -31.7137281217016,
-      "ev_under_pct": 15.720251897949755,
+      "ev_under_pct": 15.720251897949744,
       "fair_over_american": 187,
-      "recommended_side": "under",
-      "recommended_ev_pct": 15.720251897949755,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 32.2,
         "dvp_rank": null,
@@ -3348,13 +3403,14 @@
       "p_under": 0.3493,
       "over_price": -130,
       "under_price": 100,
-      "ev_over_pct": 15.121642157688397,
+      "ev_over_pct": 15.12164215768841,
       "ev_under_pct": -30.137508526082545,
       "fair_over_american": -186,
-      "recommended_side": "over",
-      "recommended_ev_pct": 15.121642157688397,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.9,
         "dvp_rank": null,
@@ -3364,7 +3420,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.6506875426304127,
           "fair_american": -186
@@ -3408,13 +3464,14 @@
       "p_under": 0.6228,
       "over_price": -112,
       "under_price": -118,
-      "ev_over_pct": -28.60301942800602,
+      "ev_over_pct": -28.60301942800603,
       "ev_under_pct": 15.061213717388666,
       "fair_over_american": 165,
-      "recommended_side": "under",
-      "recommended_ev_pct": 15.061213717388666,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 20.2,
         "dvp_rank": null,
@@ -3468,13 +3525,14 @@
       "p_under": 0.3563,
       "over_price": -128,
       "under_price": -104,
-      "ev_over_pct": 14.65604450290493,
+      "ev_over_pct": 14.65604450290494,
       "ev_under_pct": -30.10706115299652,
       "fair_over_american": -181,
-      "recommended_side": "over",
-      "recommended_ev_pct": 14.65604450290493,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 26.1,
         "dvp_rank": null,
@@ -3484,7 +3542,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.6436830568584136,
           "fair_american": -181
@@ -3528,13 +3586,14 @@
       "p_under": 0.3872,
       "over_price": -115,
       "under_price": -115,
-      "ev_over_pct": 14.573788468848015,
+      "ev_over_pct": 14.573788468848004,
       "ev_under_pct": -27.617266729717592,
       "fair_over_american": -158,
-      "recommended_side": "over",
-      "recommended_ev_pct": 14.573788468848015,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 28.6,
         "dvp_rank": null,
@@ -3544,7 +3603,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.612836542972908,
           "fair_american": -158
@@ -3588,13 +3647,14 @@
       "p_under": 0.634,
       "over_price": -106,
       "under_price": -125,
-      "ev_over_pct": -28.86628592027252,
-      "ev_under_pct": 14.114987153339797,
+      "ev_over_pct": -28.866285920272528,
+      "ev_under_pct": 14.114987153339786,
       "fair_over_american": 173,
-      "recommended_side": "under",
-      "recommended_ev_pct": 14.114987153339797,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 27.3,
         "dvp_rank": null,
@@ -3648,13 +3708,14 @@
       "p_under": 0.6213,
       "over_price": -110,
       "under_price": -120,
-      "ev_over_pct": -27.709823889324355,
+      "ev_over_pct": -27.70982388932436,
       "ev_under_pct": 13.911815004827366,
       "fair_over_american": 164,
-      "recommended_side": "under",
-      "recommended_ev_pct": 13.911815004827366,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 26.5,
         "dvp_rank": null,
@@ -3717,6 +3778,7 @@
       "confidence_reasons": [
         "thin sample (2 games)"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 25.9,
         "dvp_rank": null,
@@ -3773,10 +3835,11 @@
       "ev_over_pct": 13.476144852421434,
       "ev_under_pct": -23.459666600218966,
       "fair_over_american": -131,
-      "recommended_side": "over",
-      "recommended_ev_pct": 13.476144852421434,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 24.9,
         "dvp_rank": null,
@@ -3830,8 +3893,8 @@
       "p_under": 0.5773,
       "over_price": -128,
       "under_price": -104,
-      "ev_over_pct": -24.700551497571364,
-      "ev_under_pct": 13.232995981131223,
+      "ev_over_pct": -24.700551497571375,
+      "ev_under_pct": 13.232995981131236,
       "fair_over_american": 137,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -3839,6 +3902,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.8,
         "dvp_rank": null,
@@ -3892,13 +3956,14 @@
       "p_under": 0.6073,
       "over_price": -112,
       "under_price": -118,
-      "ev_over_pct": -25.672642257363687,
-      "ev_under_pct": 12.201120617036764,
+      "ev_over_pct": -25.672642257363698,
+      "ev_under_pct": 12.201120617036754,
       "fair_over_american": 155,
-      "recommended_side": "under",
-      "recommended_ev_pct": 12.201120617036764,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 26.8,
         "dvp_rank": null,
@@ -3955,10 +4020,11 @@
       "ev_over_pct": 11.595715197708834,
       "ev_under_pct": -22.31138608283504,
       "fair_over_american": -126,
-      "recommended_side": "over",
-      "recommended_ev_pct": 11.595715197708834,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.3,
         "dvp_rank": null,
@@ -4013,7 +4079,7 @@
       "over_price": 100,
       "under_price": -132,
       "ev_over_pct": -26.67678458213154,
-      "ev_under_pct": 11.322022814600446,
+      "ev_under_pct": 11.322022814600441,
       "fair_over_american": 173,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -4021,6 +4087,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 27.5,
         "dvp_rank": null,
@@ -4074,13 +4141,14 @@
       "p_under": 0.6291,
       "over_price": -102,
       "under_price": -130,
-      "ev_over_pct": -26.553056952051996,
+      "ev_over_pct": -26.55305695205199,
       "ev_under_pct": 11.307491092731903,
       "fair_over_american": 170,
-      "recommended_side": "under",
-      "recommended_ev_pct": 11.307491092731903,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 35.0,
         "dvp_rank": null,
@@ -4134,8 +4202,8 @@
       "p_under": 0.6164,
       "over_price": -106,
       "under_price": -125,
-      "ev_over_pct": -25.458288276747343,
-      "ev_under_pct": 10.95845341360871,
+      "ev_over_pct": -25.458288276747332,
+      "ev_under_pct": 10.958453413608705,
       "fair_over_american": 161,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -4143,6 +4211,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 28.1,
         "dvp_rank": null,
@@ -4197,7 +4266,7 @@
       "over_price": 100,
       "under_price": -130,
       "ev_over_pct": -25.311630322890856,
-      "ev_under_pct": 10.852596054864982,
+      "ev_under_pct": 10.852596054864971,
       "fair_over_american": 168,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -4205,6 +4274,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 20.8,
         "dvp_rank": null,
@@ -4258,13 +4328,14 @@
       "p_under": 0.5519,
       "over_price": -132,
       "under_price": 100,
-      "ev_over_pct": -21.244960331219566,
+      "ev_over_pct": -21.244960331219577,
       "ev_under_pct": 10.382196238973984,
       "fair_over_american": 123,
-      "recommended_side": "under",
-      "recommended_ev_pct": 10.382196238973984,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 18.1,
         "dvp_rank": null,
@@ -4318,8 +4389,8 @@
       "p_under": 0.6221,
       "over_price": -102,
       "under_price": -130,
-      "ev_over_pct": -25.155520225268663,
-      "ev_under_pct": 10.058968182970396,
+      "ev_over_pct": -25.155520225268667,
+      "ev_under_pct": 10.058968182970407,
       "fair_over_american": 165,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -4327,6 +4398,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 25.5,
         "dvp_rank": null,
@@ -4381,7 +4453,7 @@
       "over_price": 105,
       "under_price": -135,
       "ev_over_pct": 10.000463409569837,
-      "ev_under_pct": -19.331920149047573,
+      "ev_under_pct": -19.331920149047576,
       "fair_over_american": -116,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -4389,6 +4461,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 21.0,
         "dvp_rank": null,
@@ -4451,6 +4524,7 @@
       "confidence_reasons": [
         "thin sample (6 games)"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 25.7,
         "dvp_rank": null,
@@ -4504,13 +4578,14 @@
       "p_under": 0.5431,
       "over_price": -136,
       "under_price": 102,
-      "ev_over_pct": -20.709362138602255,
+      "ev_over_pct": -20.70936213860225,
       "ev_under_pct": 9.700321892867848,
       "fair_over_american": 119,
-      "recommended_side": "under",
-      "recommended_ev_pct": 9.700321892867848,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 17.2,
         "dvp_rank": null,
@@ -4564,13 +4639,14 @@
       "p_under": 0.3842,
       "over_price": -128,
       "under_price": -104,
-      "ev_over_pct": 9.68220148761697,
-      "ev_under_pct": -24.629792731302896,
+      "ev_over_pct": 9.682201487616982,
+      "ev_under_pct": -24.629792731302892,
       "fair_over_american": -160,
-      "recommended_side": "over",
-      "recommended_ev_pct": 9.68220148761697,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 29.9,
         "dvp_rank": null,
@@ -4580,7 +4656,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.6157597276497795,
           "fair_american": -160
@@ -4624,13 +4700,14 @@
       "p_under": 0.3979,
       "over_price": -122,
       "under_price": -108,
-      "ev_over_pct": 9.569071256897017,
+      "ev_over_pct": 9.569071256897011,
       "ev_under_pct": -23.374405748040484,
       "fair_over_american": -151,
-      "recommended_side": "over",
-      "recommended_ev_pct": 9.569071256897017,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 20.3,
         "dvp_rank": null,
@@ -4684,13 +4761,14 @@
       "p_under": 0.3786,
       "over_price": -132,
       "under_price": 100,
-      "ev_over_pct": 9.211214064932054,
+      "ev_over_pct": 9.211214064932062,
       "ev_under_pct": -24.274829798026133,
       "fair_over_american": -164,
-      "recommended_side": "over",
-      "recommended_ev_pct": 9.211214064932054,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 36.7,
         "dvp_rank": null,
@@ -4700,7 +4778,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.6213741489901307,
           "fair_american": -164
@@ -4745,7 +4823,7 @@
       "over_price": -106,
       "under_price": -125,
       "ev_over_pct": 9.0432756381567,
-      "ev_under_pct": -20.997364037671346,
+      "ev_under_pct": -20.99736403767135,
       "fair_over_american": -128,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -4753,6 +4831,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 22.9,
         "dvp_rank": null,
@@ -4809,10 +4888,11 @@
       "ev_over_pct": 8.519574664894769,
       "ev_under_pct": -19.60811106914995,
       "fair_over_american": -119,
-      "recommended_side": "over",
-      "recommended_ev_pct": 8.519574664894769,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 19.6,
         "dvp_rank": null,
@@ -4866,8 +4946,8 @@
       "p_under": 0.3981,
       "over_price": -125,
       "under_price": -105,
-      "ev_over_pct": 8.350523875750914,
-      "ev_under_pct": -22.284959759412367,
+      "ev_over_pct": 8.350523875750904,
+      "ev_under_pct": -22.28495975941237,
       "fair_over_american": -151,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -4875,6 +4955,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 25.3,
         "dvp_rank": null,
@@ -4929,12 +5010,13 @@
       "over_price": -110,
       "under_price": -120,
       "ev_over_pct": -21.896130947221938,
-      "ev_under_pct": 8.328824163602022,
+      "ev_under_pct": 8.328824163602032,
       "fair_over_american": 144,
-      "recommended_side": "under",
-      "recommended_ev_pct": 8.328824163602022,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 19.0,
         "dvp_rank": null,
@@ -4988,8 +5070,8 @@
       "p_under": 0.5946,
       "over_price": -108,
       "under_price": -122,
-      "ev_over_pct": -21.916979147197008,
-      "ev_under_pct": 8.19205123081635,
+      "ev_over_pct": -21.91697914719701,
+      "ev_under_pct": 8.192051230816343,
       "fair_over_american": 147,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -4997,6 +5079,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 23.6,
         "dvp_rank": null,
@@ -5059,6 +5142,7 @@
       "confidence_reasons": [
         "thin sample (7 games)"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 27.7,
         "dvp_rank": null,
@@ -5121,6 +5205,7 @@
       "confidence_reasons": [
         "no games played this season"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.7,
         "dvp_rank": null,
@@ -5174,13 +5259,14 @@
       "p_under": 0.4306,
       "over_price": -112,
       "under_price": -118,
-      "ev_over_pct": 7.77501657147922,
-      "ev_under_pct": -20.44430782735996,
+      "ev_over_pct": 7.77501657147921,
+      "ev_under_pct": -20.444307827359964,
       "fair_over_american": -132,
-      "recommended_side": "over",
-      "recommended_ev_pct": 7.77501657147922,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 29.6,
         "dvp_rank": null,
@@ -5190,7 +5276,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.5693774460380034,
           "fair_american": -132
@@ -5235,12 +5321,13 @@
       "over_price": -110,
       "under_price": -120,
       "ev_over_pct": -20.753298795213794,
-      "ev_under_pct": 7.231342493816434,
+      "ev_under_pct": 7.231342493816428,
       "fair_over_american": 141,
-      "recommended_side": "under",
-      "recommended_ev_pct": 7.231342493816434,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 32.1,
         "dvp_rank": null,
@@ -5294,13 +5381,14 @@
       "p_under": 0.5845,
       "over_price": -110,
       "under_price": -120,
-      "ev_over_pct": -20.67468057252453,
-      "ev_under_pct": 7.155844041868809,
+      "ev_over_pct": -20.67468057252452,
+      "ev_under_pct": 7.15584404186882,
       "fair_over_american": 141,
-      "recommended_side": "under",
-      "recommended_ev_pct": 7.155844041868809,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.0,
         "dvp_rank": null,
@@ -5357,10 +5445,11 @@
       "ev_over_pct": 6.930810261482234,
       "ev_under_pct": -18.21192416918136,
       "fair_over_american": -115,
-      "recommended_side": "over",
-      "recommended_ev_pct": 6.930810261482234,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 33.6,
         "dvp_rank": null,
@@ -5370,7 +5459,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.5346540513074112,
           "fair_american": -115
@@ -5415,12 +5504,13 @@
       "over_price": -118,
       "under_price": -112,
       "ev_over_pct": 6.8564239948677885,
-      "ev_under_pct": -20.196604794217425,
+      "ev_under_pct": -20.19660479421742,
       "fair_over_american": -137,
-      "recommended_side": "over",
-      "recommended_ev_pct": 6.8564239948677885,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 16.5,
         "dvp_rank": null,
@@ -5430,7 +5520,7 @@
         "altitude": false
       },
       "milestone": {
-        "triggered": true,
+        "triggered": false,
         "base_over": {
           "p_over": 0.5783971574034128,
           "fair_american": -137
@@ -5474,8 +5564,8 @@
       "p_under": 0.5771,
       "over_price": -112,
       "under_price": -118,
-      "ev_over_pct": -19.95079516656599,
-      "ev_under_pct": 6.616510025058969,
+      "ev_over_pct": -19.95079516656598,
+      "ev_under_pct": 6.616510025058964,
       "fair_over_american": 136,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -5483,6 +5573,7 @@
       "confidence_reasons": [
         "thin sample (7 games)"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 24.0,
         "dvp_rank": null,
@@ -5536,8 +5627,8 @@
       "p_under": 0.5518,
       "over_price": -122,
       "under_price": -108,
-      "ev_over_pct": -18.44074638381971,
-      "ev_under_pct": 6.270953463288665,
+      "ev_over_pct": -18.440746383819718,
+      "ev_under_pct": 6.270953463288653,
       "fair_over_american": 123,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -5545,6 +5636,7 @@
       "confidence_reasons": [
         "thin sample (1 games)"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 34.0,
         "dvp_rank": null,
@@ -5598,13 +5690,14 @@
       "p_under": 0.5546,
       "over_price": -124,
       "under_price": -110,
-      "ev_over_pct": -19.532877066572414,
+      "ev_over_pct": -19.532877066572418,
       "ev_under_pct": 5.86997235444584,
       "fair_over_american": 124,
-      "recommended_side": "under",
-      "recommended_ev_pct": 5.86997235444584,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.3,
         "dvp_rank": null,
@@ -5661,10 +5754,11 @@
       "ev_over_pct": 5.6426949846608565,
       "ev_under_pct": -19.099004694770795,
       "fair_over_american": -136,
-      "recommended_side": "over",
-      "recommended_ev_pct": 5.6426949846608565,
+      "recommended_side": null,
+      "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 32.1,
         "dvp_rank": null,
@@ -5727,6 +5821,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 28.7,
         "dvp_rank": null,
@@ -5780,8 +5875,8 @@
       "p_under": 0.4381,
       "over_price": -114,
       "under_price": -114,
-      "ev_over_pct": 5.477428696871417,
-      "ev_under_pct": -17.758130451257376,
+      "ev_over_pct": 5.4774286968714225,
+      "ev_under_pct": -17.75813045125738,
       "fair_over_american": -128,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -5789,6 +5884,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 24.5,
         "dvp_rank": null,
@@ -5842,7 +5938,7 @@
       "p_under": 0.4628,
       "over_price": -104,
       "under_price": -128,
-      "ev_over_pct": 5.377694973701342,
+      "ev_over_pct": 5.37769497370133,
       "ev_under_pct": -17.567245068030257,
       "fair_over_american": -116,
       "recommended_side": null,
@@ -5851,6 +5947,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 21.6,
         "dvp_rank": null,
@@ -5904,13 +6001,14 @@
       "p_under": 0.4393,
       "over_price": -115,
       "under_price": -115,
-      "ev_over_pct": 4.822751174522627,
-      "ev_under_pct": -17.866229435392206,
+      "ev_over_pct": 4.8227511745226215,
+      "ev_under_pct": -17.8662294353922,
       "fair_over_american": -128,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.3,
         "dvp_rank": null,
@@ -5971,6 +6069,7 @@
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.3,
         "dvp_rank": null,
@@ -6025,12 +6124,13 @@
       "over_price": 105,
       "under_price": -135,
       "ev_over_pct": 4.271011537180658,
-      "ev_under_pct": -14.466802931300654,
+      "ev_under_pct": -14.46680293130066,
       "fair_over_american": -104,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 21.4,
         "dvp_rank": null,
@@ -6084,8 +6184,8 @@
       "p_under": 0.5685,
       "over_price": -110,
       "under_price": -120,
-      "ev_over_pct": -17.618543151683834,
-      "ev_under_pct": 4.2209819155059165,
+      "ev_over_pct": -17.61854315168384,
+      "ev_under_pct": 4.220981915505906,
       "fair_over_american": 132,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -6093,6 +6193,7 @@
       "confidence_reasons": [
         "thin sample (1 games)"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 36.0,
         "dvp_rank": null,
@@ -6146,7 +6247,7 @@
       "p_under": 0.5758,
       "over_price": -105,
       "under_price": -125,
-      "ev_over_pct": -17.1743894125954,
+      "ev_over_pct": -17.174389412595392,
       "ev_under_pct": 3.6388273121001458,
       "fair_over_american": 136,
       "recommended_side": null,
@@ -6155,6 +6256,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 20.1,
         "dvp_rank": null,
@@ -6208,8 +6310,8 @@
       "p_under": 0.5845,
       "over_price": -102,
       "under_price": -130,
-      "ev_over_pct": -17.722612668729766,
-      "ev_under_pct": 3.418602178537716,
+      "ev_over_pct": -17.722612668729752,
+      "ev_under_pct": 3.4186021785377108,
       "fair_over_american": 141,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -6217,6 +6319,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 24.3,
         "dvp_rank": null,
@@ -6270,8 +6373,8 @@
       "p_under": 0.564,
       "over_price": -110,
       "under_price": -120,
-      "ev_over_pct": -16.768010410158418,
-      "ev_under_pct": 3.4042004732473763,
+      "ev_over_pct": -16.76801041015843,
+      "ev_under_pct": 3.4042004732473874,
       "fair_over_american": 129,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -6279,6 +6382,7 @@
       "confidence_reasons": [
         "thin sample (1 games)"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 23.0,
         "dvp_rank": null,
@@ -6332,8 +6436,8 @@
       "p_under": 0.405,
       "over_price": -136,
       "under_price": 102,
-      "ev_over_pct": 3.2571175676977484,
-      "ev_under_pct": -18.198285331347137,
+      "ev_over_pct": 3.2571175676977537,
+      "ev_under_pct": -18.19828533134714,
       "fair_over_american": -147,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -6341,6 +6445,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 23.5,
         "dvp_rank": null,
@@ -6394,8 +6499,8 @@
       "p_under": 0.4415,
       "over_price": -118,
       "under_price": -112,
-      "ev_over_pct": 3.1770372328326135,
-      "ev_under_pct": -16.426800598646,
+      "ev_over_pct": 3.1770372328326246,
+      "ev_under_pct": -16.426800598646008,
       "fair_over_american": -126,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -6403,6 +6508,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 21.5,
         "dvp_rank": null,
@@ -6457,7 +6563,7 @@
       "over_price": 104,
       "under_price": -132,
       "ev_over_pct": -14.513455311859458,
-      "ev_under_pct": 2.1060666679716067,
+      "ev_under_pct": 2.106066667971618,
       "fair_over_american": 139,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -6465,6 +6571,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 21.4,
         "dvp_rank": null,
@@ -6519,7 +6626,7 @@
       "over_price": -112,
       "under_price": -118,
       "ev_over_pct": -14.34276187364999,
-      "ev_under_pct": 1.1429834468755173,
+      "ev_under_pct": 1.1429834468755118,
       "fair_over_american": 121,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -6527,6 +6634,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 26.3,
         "dvp_rank": null,
@@ -6580,13 +6688,14 @@
       "p_under": 0.4269,
       "over_price": -132,
       "under_price": 100,
-      "ev_over_pct": 0.7229271049901953,
+      "ev_over_pct": 0.7229271049902009,
       "ev_under_pct": -14.615744636712979,
       "fair_over_american": -134,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 27.8,
         "dvp_rank": null,
@@ -6641,12 +6750,13 @@
       "over_price": -118,
       "under_price": -112,
       "ev_over_pct": -13.470089979707122,
-      "ev_under_pct": 0.6294139470983506,
+      "ev_under_pct": 0.6294139470983451,
       "fair_over_american": 114,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 27.5,
         "dvp_rank": null,
@@ -6700,13 +6810,14 @@
       "p_under": 0.4706,
       "over_price": -112,
       "under_price": -118,
-      "ev_over_pct": 0.20145164268795535,
-      "ev_under_pct": -13.052392201305935,
+      "ev_over_pct": 0.20145164268796645,
+      "ev_under_pct": -13.05239220130594,
       "fair_over_american": -112,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 31.3,
         "dvp_rank": null,
@@ -6760,13 +6871,14 @@
       "p_under": 0.4685,
       "over_price": -113,
       "under_price": -120,
-      "ev_over_pct": 0.17928644420598383,
-      "ev_under_pct": -14.102388928128345,
+      "ev_over_pct": 0.17928644420599493,
+      "ev_under_pct": -14.10238892812835,
       "fair_over_american": -113,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 32.4,
         "dvp_rank": null,
@@ -6820,8 +6932,8 @@
       "p_under": 0.4715,
       "over_price": -112,
       "under_price": -118,
-      "ev_over_pct": 0.03764913982312046,
-      "ev_under_pct": -12.892518444112627,
+      "ev_over_pct": 0.03764913982311491,
+      "ev_under_pct": -12.892518444112621,
       "fair_over_american": -112,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -6829,6 +6941,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 18.0,
         "dvp_rank": null,
@@ -6882,13 +6995,14 @@
       "p_under": 0.5146,
       "over_price": -125,
       "under_price": -106,
-      "ev_over_pct": -12.62534750019767,
-      "ev_under_pct": 0.004306001261633607,
+      "ev_over_pct": -12.62534750019768,
+      "ev_under_pct": 0.00430600126164471,
       "fair_over_american": 106,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 34.7,
         "dvp_rank": null,
@@ -6943,12 +7057,13 @@
       "over_price": -120,
       "under_price": -110,
       "ev_over_pct": -0.3543475042609212,
-      "ev_under_pct": -12.854150532753078,
+      "ev_under_pct": -12.854150532753083,
       "fair_over_american": -119,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 22.3,
         "dvp_rank": null,
@@ -7002,7 +7117,7 @@
       "p_under": 0.5622,
       "over_price": -102,
       "under_price": -130,
-      "ev_over_pct": -13.307340373427273,
+      "ev_over_pct": -13.307340373427268,
       "ev_under_pct": -0.52588708451623,
       "fair_over_american": 128,
       "recommended_side": null,
@@ -7011,6 +7126,7 @@
       "confidence_reasons": [
         "thin sample (1 games)"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 28.0,
         "dvp_rank": null,
@@ -7065,7 +7181,7 @@
       "over_price": -120,
       "under_price": -110,
       "ev_over_pct": -12.035317604081975,
-      "ev_under_pct": -0.6904957180633942,
+      "ev_under_pct": -0.6904957180633997,
       "fair_over_american": 108,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -7073,6 +7189,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 23.9,
         "dvp_rank": null,
@@ -7126,13 +7243,14 @@
       "p_under": 0.4937,
       "over_price": -104,
       "under_price": -128,
-      "ev_over_pct": -0.6935330261282291,
+      "ev_over_pct": -0.6935330261282235,
       "ev_under_pct": -12.054034347596787,
       "fair_over_american": -103,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 31.1,
         "dvp_rank": null,
@@ -7195,6 +7313,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 24.2,
         "dvp_rank": null,
@@ -7248,13 +7367,14 @@
       "p_under": 0.5182,
       "over_price": -120,
       "under_price": -110,
-      "ev_over_pct": -11.667201038709457,
+      "ev_over_pct": -11.667201038709463,
       "ev_under_pct": -1.0738237117570826,
       "fair_over_american": 108,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 19.7,
         "dvp_rank": null,
@@ -7308,13 +7428,14 @@
       "p_under": 0.529,
       "over_price": -115,
       "under_price": -115,
-      "ev_over_pct": -11.942610560811378,
-      "ev_under_pct": -1.1008677000582001,
+      "ev_over_pct": -11.942610560811373,
+      "ev_under_pct": -1.1008677000581946,
       "fair_over_american": 112,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 22.6,
         "dvp_rank": null,
@@ -7368,8 +7489,8 @@
       "p_under": 0.4884,
       "over_price": -108,
       "under_price": -122,
-      "ev_over_pct": -1.4713823993292963,
-      "ev_under_pct": -11.125557045778717,
+      "ev_over_pct": -1.4713823993292907,
+      "ev_under_pct": -11.125557045778711,
       "fair_over_american": -105,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -7377,6 +7498,7 @@
       "confidence_reasons": [
         "thin sample (6 games)"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 26.4,
         "dvp_rank": null,
@@ -7437,6 +7559,7 @@
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 28.8,
         "dvp_rank": null,
@@ -7491,12 +7614,13 @@
       "over_price": -110,
       "under_price": -120,
       "ev_over_pct": -1.7243927894506017,
-      "ev_under_pct": -11.042448194257743,
+      "ev_under_pct": -11.042448194257748,
       "fair_over_american": -106,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 20.1,
         "dvp_rank": null,
@@ -7550,13 +7674,14 @@
       "p_under": 0.4864,
       "over_price": -136,
       "under_price": 102,
-      "ev_over_pct": -10.883164298530696,
+      "ev_over_pct": -10.88316429853069,
       "ev_under_pct": -1.7380385758798633,
       "fair_over_american": -106,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 22.7,
         "dvp_rank": null,
@@ -7611,12 +7736,13 @@
       "over_price": -114,
       "under_price": -114,
       "ev_over_pct": -10.39334895782742,
-      "ev_under_pct": -1.8873527965585446,
+      "ev_under_pct": -1.8873527965585501,
       "fair_over_american": 109,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.5,
         "dvp_rank": null,
@@ -7671,12 +7797,13 @@
       "over_price": -118,
       "under_price": -112,
       "ev_over_pct": -10.83219806642709,
-      "ev_under_pct": -2.0733016534346396,
+      "ev_under_pct": -2.073301653434634,
       "fair_over_american": 107,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 18.4,
         "dvp_rank": null,
@@ -7730,13 +7857,14 @@
       "p_under": 0.5012,
       "over_price": -104,
       "under_price": -128,
-      "ev_over_pct": -2.148696241871412,
+      "ev_over_pct": -2.1486962418714173,
       "ev_under_pct": -10.732617750947648,
       "fair_over_american": 100,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 29.1,
         "dvp_rank": null,
@@ -7791,12 +7919,13 @@
       "over_price": -109,
       "under_price": -117,
       "ev_over_pct": -2.4307799318166734,
-      "ev_under_pct": -8.907077343178344,
+      "ev_under_pct": -8.907077343178349,
       "fair_over_american": -104,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 31.0,
         "dvp_rank": null,
@@ -7850,7 +7979,7 @@
       "p_under": 0.5074,
       "over_price": -125,
       "under_price": -109,
-      "ev_over_pct": -11.329373102999323,
+      "ev_over_pct": -11.329373102999318,
       "ev_under_pct": -2.712339558986443,
       "fair_over_american": 103,
       "recommended_side": null,
@@ -7859,6 +7988,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 31.5,
         "dvp_rank": null,
@@ -7919,6 +8049,7 @@
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 29.9,
         "dvp_rank": null,
@@ -7979,6 +8110,7 @@
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 19.6,
         "dvp_rank": null,
@@ -8033,12 +8165,13 @@
       "over_price": -125,
       "under_price": -106,
       "ev_over_pct": -9.47153748763675,
-      "ev_under_pct": -3.400750930538937,
+      "ev_under_pct": -3.4007509305389427,
       "fair_over_american": -101,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 25.3,
         "dvp_rank": null,
@@ -8099,6 +8232,7 @@
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 28.3,
         "dvp_rank": null,
@@ -8152,13 +8286,14 @@
       "p_under": 0.5329,
       "over_price": -106,
       "under_price": -125,
-      "ev_over_pct": -9.218987230094905,
+      "ev_over_pct": -9.21898723009491,
       "ev_under_pct": -4.082607944164529,
       "fair_over_american": 114,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 35.0,
         "dvp_rank": null,
@@ -8212,8 +8347,8 @@
       "p_under": 0.542,
       "over_price": 100,
       "under_price": -130,
-      "ev_over_pct": -8.392077038032669,
-      "ev_under_pct": -4.114701081740341,
+      "ev_over_pct": -8.392077038032674,
+      "ev_under_pct": -4.1147010817403356,
       "fair_over_american": 118,
       "recommended_side": null,
       "recommended_ev_pct": null,
@@ -8221,6 +8356,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 20.8,
         "dvp_rank": null,
@@ -8281,6 +8417,7 @@
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 28.5,
         "dvp_rank": null,
@@ -8341,6 +8478,7 @@
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 29.7,
         "dvp_rank": null,
@@ -8394,13 +8532,14 @@
       "p_under": 0.4959,
       "over_price": -112,
       "under_price": -118,
-      "ev_over_pct": -4.575405651669878,
-      "ev_under_pct": -8.39010615641303,
+      "ev_over_pct": -4.575405651669884,
+      "ev_under_pct": -8.390106156413024,
       "fair_over_american": -102,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 27.5,
         "dvp_rank": null,
@@ -8463,6 +8602,7 @@
       "confidence_reasons": [
         "role/form shift detected"
       ],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 23.6,
         "dvp_rank": null,
@@ -8516,13 +8656,14 @@
       "p_under": 0.5242,
       "over_price": 100,
       "under_price": -132,
-      "ev_over_pct": -4.847774743241523,
+      "ev_over_pct": -4.847774743241528,
       "ev_under_pct": -7.861046437757457,
       "fair_over_american": 110,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.6,
         "dvp_rank": null,
@@ -8576,13 +8717,14 @@
       "p_under": 0.5146,
       "over_price": -112,
       "under_price": -118,
-      "ev_over_pct": -8.114689580733298,
-      "ev_under_pct": -4.935710713016311,
+      "ev_over_pct": -8.114689580733291,
+      "ev_under_pct": -4.935710713016306,
       "fair_over_american": 106,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 27.6,
         "dvp_rank": null,
@@ -8636,13 +8778,14 @@
       "p_under": 0.5196,
       "over_price": -108,
       "under_price": -122,
-      "ev_over_pct": -7.484450571799334,
-      "ev_under_pct": -5.444231285093743,
+      "ev_over_pct": -7.484450571799329,
+      "ev_under_pct": -5.444231285093748,
       "fair_over_american": 108,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.9,
         "dvp_rank": null,
@@ -8696,13 +8839,14 @@
       "p_under": 0.5194,
       "over_price": -104,
       "under_price": -128,
-      "ev_over_pct": -5.724186170173101,
+      "ev_over_pct": -5.724186170173107,
       "ev_under_pct": -7.485757411644278,
       "fair_over_american": 108,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.7,
         "dvp_rank": null,
@@ -8756,13 +8900,14 @@
       "p_under": 0.4977,
       "over_price": -118,
       "under_price": -112,
-      "ev_over_pct": -7.209053016509564,
-      "ev_under_pct": -5.785482050253804,
+      "ev_over_pct": -7.209053016509559,
+      "ev_under_pct": -5.78548205025381,
       "fair_over_american": -101,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.9,
         "dvp_rank": null,
@@ -8817,12 +8962,13 @@
       "over_price": -106,
       "under_price": -125,
       "ev_over_pct": -7.340632481920705,
-      "ev_under_pct": -5.822365642958877,
+      "ev_under_pct": -5.8223656429588715,
       "fair_over_american": 110,
       "recommended_side": null,
       "recommended_ev_pct": null,
       "low_confidence": false,
       "confidence_reasons": [],
+      "market_suppressed": true,
       "factors": {
         "projected_minutes": 30.7,
         "dvp_rank": null,
@@ -8876,8 +9022,53 @@
     "settled_through": null,
     "note": "Settled automatically once box scores land in the database."
   },
-  "generated_at": "2026-10-23T05:43:17+00:00",
+  "calibration": {
+    "ran": true,
+    "date": "2026-10-23",
+    "min_ev_pct": 7.0,
+    "suppressed_markets": [
+      "pts"
+    ],
+    "gate_sweep": [
+      {
+        "gate": 5.0,
+        "bets": 6039,
+        "units": -30.79,
+        "roi_pct": -0.5
+      },
+      {
+        "gate": 8.0,
+        "bets": 4590,
+        "units": 6.38,
+        "roi_pct": 0.1
+      },
+      {
+        "gate": 10.0,
+        "bets": 3645,
+        "units": 23.38,
+        "roi_pct": 0.6
+      },
+      {
+        "gate": 12.0,
+        "bets": 2867,
+        "units": 88.92,
+        "roi_pct": 3.1
+      },
+      {
+        "gate": 15.0,
+        "bets": 1934,
+        "units": 64.37,
+        "roi_pct": 3.3
+      }
+    ],
+    "notes": [
+      "min_ev 5.0->7.0",
+      "suppressed pts (-10.2% ROI)"
+    ],
+    "bets_analyzed": 10658
+  },
+  "generated_at": "2026-10-23T06:00:09+00:00",
   "total_plays": 146,
-  "recommended_count": 65,
-  "milestone_count": 27
+  "recommended_count": 1,
+  "milestone_count": 0
 }

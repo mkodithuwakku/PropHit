@@ -56,12 +56,16 @@ def backtest(
     prior_games: float = 6.0,
     min_history: int = MIN_HISTORY,
     through_date: Optional[str] = None,
+    collect: bool = False,
 ) -> dict[str, Any]:
     """Walk every historical player-game and grade the model.
 
     Returns per-stat and overall records for two rules:
       - 'favored': always take the side the model PMF favors (all plays)
       - 'ev_gated': only bets where model EV >= min_ev_pct at -110
+    With collect=True also returns 'bets_detail': every play's favored
+    side, its EV at -110, and its graded result — used by the calibrator
+    to sweep EV thresholds without re-running the backtest.
     """
     store = FeatureStore(db)
     dist = DistributionEngine()
@@ -90,6 +94,7 @@ def backtest(
 
     per_stat = {s: blank() for s in stats}
     overall = blank()
+    detail: list[dict] = []
 
     for game in games:
         pid, game_date = game["player_id"], game["game_date"]
@@ -154,6 +159,22 @@ def backtest(
                 else:
                     bucket["favored_hits"] += int(hit)
 
+            if collect:
+                fav_ev = (
+                    ev_res["ev_over_pct"]
+                    if favored == "over"
+                    else ev_res["ev_under_pct"]
+                )
+                detail.append(
+                    {
+                        "stat": stat,
+                        "side": favored,
+                        "ev_pct": fav_ev,
+                        "result": ("push" if push else ("win" if hit else "loss")),
+                        "units": 0.0 if push else (0.9091 if hit else -1.0),
+                    }
+                )
+
             side = ev_res["recommended_side"]
             if side is None:
                 continue
@@ -190,7 +211,7 @@ def backtest(
             ),
         }
 
-    return {
+    result = {
         "method": (
             "trailing-mean proxy: line = pre-game L20 mean rounded to .5, "
             "flat -110; model graded leak-free per date"
@@ -199,3 +220,6 @@ def backtest(
         "per_stat": {s: finish(per_stat[s]) for s in stats},
         "overall": finish(overall),
     }
+    if collect:
+        result["bets_detail"] = detail
+    return result

@@ -105,11 +105,13 @@ function cardHtml(play) {
       : play.recommended_side === "over"
         ? "Over"
         : null;
-  const chipText = play.low_confidence
-    ? "LOW CONF"
-    : side
-      ? `${side} ${fmtSigned(evShown)}%`
-      : `${fmtSigned(evShown)}% EV`;
+  const chipText = play.market_suppressed
+    ? "MKT OFF"
+    : play.low_confidence
+      ? "LOW CONF"
+      : side
+        ? `${side} ${fmtSigned(evShown)}%`
+        : `${fmtSigned(evShown)}% EV`;
   const edge = play.model_edge ?? 0;
   const arrow = edge >= 0 ? "up" : "down";
   const pOver = Math.max(0, Math.min(100, (play.p_over || 0) * 100));
@@ -123,9 +125,11 @@ function cardHtml(play) {
     ["Sample", play.history_games != null ? `${play.history_games} g` : null],
     [
       "Confidence",
-      play.low_confidence
-        ? `Low — ${(play.confidence_reasons || []).join(", ")}`
-        : null,
+      play.market_suppressed
+        ? "Market auto-suppressed (losing calibration ROI)"
+        : play.low_confidence
+          ? `Low — ${(play.confidence_reasons || []).join(", ")}`
+          : null,
     ],
     ["DvP", f.dvp_label],
     ["Rest", f.rest_label],
@@ -177,7 +181,7 @@ function cardHtml(play) {
           <span>${play.opponent_abbr || ""}</span>
         </div>
       </div>
-      <span class="chip ${play.low_confidence ? "ev-caution" : evChipClass(evShown)}">${chipText}</span>
+      <span class="chip ${play.market_suppressed || play.low_confidence ? "ev-caution" : evChipClass(evShown)}">${chipText}</span>
     </div>
     <div class="stat-row">
       <span class="stat-badge ${play.stat}">${stat}</span>
@@ -221,7 +225,7 @@ function renderSlate(slate) {
   if (slate.demo) {
     document.getElementById("demo-badge").hidden = false;
   }
-  renderModelRecord(slate.model_stats);
+  renderModelRecord(slate.model_stats, slate.calibration);
 
   playsEl.innerHTML = slate.plays.length
     ? slate.plays.map(cardHtml).join("")
@@ -231,12 +235,20 @@ function renderSlate(slate) {
   );
 }
 
-function renderModelRecord(stats) {
+function renderModelRecord(stats, calibration) {
   const el = document.getElementById("model-record");
-  if (!el || !stats) return;
-  const r = stats.record || {};
-  const a = stats.accuracy || {};
+  if (!el) return;
+  const r = (stats && stats.record) || {};
+  const a = (stats && stats.accuracy) || {};
   const parts = [];
+  if (calibration && calibration.min_ev_pct != null) {
+    const sup = (calibration.suppressed_markets || []).join(", ");
+    parts.push(
+      `<span class="rec-chip">EV ≥ ${calibration.min_ev_pct}%` +
+        `${calibration.ran ? " · calibrated today" : ""}</span>` +
+        (sup ? `<span class="rec-chip neg">off: ${sup}</span>` : ""),
+    );
+  }
   if (r.bets > 0) {
     const roi = fmtSigned(r.roi_pct);
     const cls = r.units >= 0 ? "pos" : "neg";
