@@ -1,0 +1,68 @@
+{
+  "over_under_lines": [
+    {
+      "id": "ud-line-1",
+      "over_under": {
+        "title": "Nikola Jokic higher than 12.5 Rebounds",
+        "player_id": "u-p1",
+        "game_id": "u-g1",
+        "stat_value": "12.5",
+        "appearance_stat": {"id": "reb", "display_stat": "Rebounds"},
+        "type": "over_under"
+      },
+      "options": [
+        {"choice": "higher", "choice_display": "Higher", "payout_multiplier": 1.85},
+        {"choice": "lower", "choice_display": "Lower", "payout_multiplier": 1.95}
+      ],
+      "status": "scheduled"
+    },
+    {
+      "id": "ud-line-2",
+      "over_under": {
+        "title": "Jayson Tatum higher than 26.5 Points",
+        "player_id": "u-p2",
+        "game_id": "u-g2",
+        "stat_value": "26.5",
+        "appearance_stat": {"id": "pts", "display_stat": "Points"},
+        "type": "over_under"
+      },
+      "options": [
+        {"choice": "higher", "choice_display": "Higher", "payout_multiplier": 1.9},
+        {"choice": "lower", "choice_display": "Lower", "payout_multiplier": 1.9}
+      ],
+      "status": "scheduled"
+    }
+  ],
+  "players": [
+    {
+      "id": "u-p1",
+      "first_name": "Nikola",
+      "last_name": "Jokic",
+      "team_id": "DEN",
+      "position": "C",
+      "sport": "NBA"
+    },
+    {
+      "id": "u-p2",
+      "first_name": "Jayson",
+      "last_name": "Tatum",
+      "team_id": "BOS",
+      "position": "F",
+      "sport": "NBA"
+    }
+  ],
+  "games": [
+    {
+      "id": "u-g1",
+      "away_team_id": "DEN",
+      "home_team_id": "UTA",
+      "scheduled_at": "2025-10-23T02:00:00Z"
+    },
+    {
+      "id": "u-g2",
+      "away_team_id": "BOS",
+      "home_team_id": "NYK",
+      "scheduled_at": "2025-10-23T23:30:00Z"
+    }
+  ]
+}

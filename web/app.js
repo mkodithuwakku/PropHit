@@ -107,6 +107,9 @@ function cardHtml(play) {
   const edge = play.model_edge ?? 0;
   const arrow = edge >= 0 ? "up" : "down";
   const pOver = Math.max(0, Math.min(100, (play.p_over || 0) * 100));
+  const pUnder = 100 - pOver;
+  const underFavored = pUnder > pOver;
+  const favoredPct = Math.max(pOver, pUnder);
 
   const f = play.factors || {};
   const facts = [
@@ -148,9 +151,11 @@ function cardHtml(play) {
       data-milestone="${m.triggered ? 1 : 0}"
       style="--team:${teamColor(play.team_abbr)}">
     <div class="card-top">
-      <div class="avatar">${initials(play.player_name)}<img
+      <div class="avatar"><span class="initials">${initials(play.player_name)}</span><img
         src="${headshotUrl(play.player_id)}" alt=""
-        loading="lazy" onerror="this.remove()"/></div>
+        loading="lazy"
+        onload="this.closest('.avatar').classList.add('loaded')"
+        onerror="this.remove()"/></div>
       <div class="player-block">
         <div class="player-name">${play.player_name}</div>
         <div class="player-meta">${logoImg(play.team_abbr)}
@@ -167,10 +172,11 @@ function cardHtml(play) {
         <span class="edge-arrow ${arrow}">${edge >= 0 ? "▲" : "▼"} ${fmtSigned(edge)}</span>
       </div>
     </div>
-    <div class="prob-bar"><div class="prob-fill" style="width:${pOver}%"></div></div>
+    <div class="prob-bar"><div class="prob-fill${underFavored ? " under" : ""}"
+      style="width:${favoredPct}%"></div></div>
     <div class="prob-labels">
-      <span class="over">Over ${pOver.toFixed(1)}%</span>
-      <span class="under">Under ${(100 - pOver).toFixed(1)}%</span>
+      <span class="${underFavored ? "" : "favored"}">Over ${pOver.toFixed(1)}%</span>
+      <span class="${underFavored ? "favored" : ""}">Under ${pUnder.toFixed(1)}%</span>
     </div>
     ${m.triggered ? '<div class="milestone-flag">MILESTONE ALERT</div>' : ""}
     <details class="tray"><summary>Factors</summary>

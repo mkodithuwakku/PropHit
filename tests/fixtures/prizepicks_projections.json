@@ -1,0 +1,172 @@
+{
+  "data": [
+    {
+      "id": "pp-1001",
+      "type": "projection",
+      "attributes": {
+        "line_score": 12.5,
+        "stat_type": "Rebounds",
+        "odds_type": "standard",
+        "status": "pre_game",
+        "start_time": "2025-10-23T02:00:00Z",
+        "description": "UTA",
+        "game_id": "nba-evt-1"
+      },
+      "relationships": {
+        "new_player": {"data": {"id": "p-jokic", "type": "new_player"}}
+      }
+    },
+    {
+      "id": "pp-1002",
+      "type": "projection",
+      "attributes": {
+        "line_score": 7.5,
+        "stat_type": "Assists",
+        "odds_type": "standard",
+        "status": "pre_game",
+        "start_time": "2025-10-23T00:30:00Z",
+        "description": "vs PHX",
+        "game_id": "nba-evt-2"
+      },
+      "relationships": {
+        "new_player": {"data": {"id": "p-lebron", "type": "new_player"}}
+      }
+    },
+    {
+      "id": "pp-1003",
+      "type": "projection",
+      "attributes": {
+        "line_score": 4.5,
+        "stat_type": "3-PT Made",
+        "odds_type": "standard",
+        "status": "pre_game",
+        "start_time": "2025-10-23T03:00:00Z",
+        "description": "GSW @ POR",
+        "game_id": "nba-evt-3"
+      },
+      "relationships": {
+        "new_player": {"data": {"id": "p-curry", "type": "new_player"}}
+      }
+    },
+    {
+      "id": "pp-1004",
+      "type": "projection",
+      "attributes": {
+        "line_score": 45.5,
+        "stat_type": "Pts+Rebs+Asts",
+        "odds_type": "standard",
+        "status": "pre_game",
+        "start_time": "2025-10-23T00:00:00Z",
+        "description": "CHI",
+        "game_id": "nba-evt-4"
+      },
+      "relationships": {
+        "new_player": {"data": {"id": "p-giannis", "type": "new_player"}}
+      }
+    },
+    {
+      "id": "pp-1005",
+      "type": "projection",
+      "attributes": {
+        "line_score": 26.5,
+        "stat_type": "Points",
+        "odds_type": "standard",
+        "status": "pre_game",
+        "start_time": "2025-10-23T23:30:00Z",
+        "description": "NYK",
+        "game_id": "nba-evt-5"
+      },
+      "relationships": {
+        "new_player": {"data": {"id": "p-tatum", "type": "new_player"}}
+      }
+    },
+    {
+      "id": "pp-1006",
+      "type": "projection",
+      "attributes": {
+        "line_score": 1.5,
+        "stat_type": "Blocked Shots",
+        "odds_type": "standard",
+        "status": "pre_game",
+        "start_time": "2025-10-23T02:00:00Z",
+        "description": "UTA",
+        "game_id": "nba-evt-1"
+      },
+      "relationships": {
+        "new_player": {"data": {"id": "p-jokic", "type": "new_player"}}
+      }
+    },
+    {
+      "id": "pp-1007",
+      "type": "projection",
+      "attributes": {
+        "line_score": 1.5,
+        "stat_type": "Dunks",
+        "odds_type": "standard",
+        "status": "pre_game",
+        "start_time": "2025-10-23T02:00:00Z",
+        "description": "UTA",
+        "game_id": "nba-evt-1"
+      },
+      "relationships": {
+        "new_player": {"data": {"id": "p-jokic", "type": "new_player"}}
+      }
+    },
+    {
+      "id": "pp-1008",
+      "type": "projection",
+      "attributes": {
+        "line_score": null,
+        "stat_type": "Points",
+        "status": "pre_game",
+        "start_time": "2025-10-23T02:00:00Z",
+        "description": "UTA",
+        "game_id": "nba-evt-1"
+      },
+      "relationships": {
+        "new_player": {"data": {"id": "p-jokic", "type": "new_player"}}
+      }
+    }
+  ],
+  "included": [
+    {
+      "id": "p-jokic",
+      "type": "new_player",
+      "attributes": {
+        "name": "Nikola Jokic",
+        "position": "C",
+        "team": "DEN",
+        "image_url": "https://static.prizepicks.com/images/players/nba/jokic.webp"
+      }
+    },
+    {
+      "id": "p-lebron",
+      "type": "new_player",
+      "attributes": {"name": "LeBron James", "position": "F", "team": "LAL"}
+    },
+    {
+      "id": "p-curry",
+      "type": "new_player",
+      "attributes": {"name": "Stephen Curry", "position": "G", "team": "GSW"}
+    },
+    {
+      "id": "p-giannis",
+      "type": "new_player",
+      "attributes": {
+        "name": "Giannis Antetokounmpo",
+        "position": "F",
+        "team": "MIL"
+      }
+    },
+    {
+      "id": "p-tatum",
+      "type": "new_player",
+      "attributes": {"name": "Jayson Tatum", "position": "F", "team": "BOS"}
+    },
+    {
+      "id": "7",
+      "type": "league",
+      "attributes": {"name": "NBA", "sport": "basketball"}
+    }
+  ]
+}

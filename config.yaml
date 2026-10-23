@@ -10,19 +10,17 @@ ingestion:
     sleep_seconds: 0.6
     max_retries: 3
     timeout_seconds: 30
-  odds_api:
-    base_url: https://api.the-odds-api.com/v4
-    api_key_env: THE_ODDS_API_KEY
-    regions: us
-    odds_format: american
-    markets:
-      - player_points
-      - player_rebounds
-      - player_assists
-      - player_threes
-      - player_points_rebounds_assists
-      - player_points_rebounds
-      - player_points_assists
+  consensus_sources:
+    # 100% free, unauthenticated public feeds — no keys or secrets.
+    primary:
+      name: prizepicks
+      base_url: https://api.prizepicks.com
+      league_id: 7          # NBA
+      path: /projections
+    fallback:
+      name: underdog
+      base_url: https://api.underdogfantasy.com
+      path: /beta/v3/over_under_lines
 
 decision:
   min_ev_pct: 5.0            # +EV threshold to flag a Recommended Play

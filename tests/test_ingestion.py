@@ -1,7 +1,7 @@
 """M1 verification: ingestion, parsing, and storage work 100% offline.
 
 pytest-socket blocks all socket usage (see pytest.ini + conftest), so any
-accidental live call to nba_api or The Odds API fails loudly.
+accidental live call to nba_api, PrizePicks, or Underdog fails loudly.
 """
 
 import pytest
@@ -9,7 +9,8 @@ import pytest
 from src.ingestion.consensus_odds import (
     CONSENSUS_BOOKMAKER,
     ConsensusOddsIngestion,
-    OddsAPIClient,
+    PrizePicksClient,
+    UnderdogClient,
 )
 from src.ingestion.injuries import parse_injury_entries
 from src.ingestion.nba_stats import (
@@ -182,73 +183,89 @@ def test_ingest_team_defense_fixture(db, load_fixture):
     assert uta["position_scope"] == "Overall"
 
 
-# --- consensus odds ingestion -----------------------------------------------
+# --- consensus odds ingestion: PrizePicks primary, Underdog fallback --------
+# Both sources are 100% free and unauthenticated — no API keys anywhere.
 
 
-def test_ingest_event_odds_fixture(db, load_fixture):
-    payload = load_fixture("odds_api_event_odds.json")
-    written = ConsensusOddsIngestion(db).ingest_event_odds(
+def test_ingest_prizepicks_fixture(db, load_fixture):
+    payload = load_fixture("prizepicks_projections.json")
+    written = ConsensusOddsIngestion(db).ingest_prizepicks(
         payload, snapshot_time=SNAPSHOT
     )
 
-    # 3 Jokic REB + 2 LBJ REB + 2 Jokic PTS + 1 Jokic 3PM books = 8
-    # + 4 consensus rows = 12
-    assert written == 12
+    # 7 valid projections (null line_score is skipped) x book+consensus = 14
+    assert written == 14
 
-    lines = db.query(
-        "SELECT * FROM fact_consensus_lines WHERE event_id = ?",
-        ("evt_den_lal_20251022",),
-    )
-    assert len(lines) == 12
+    lines = db.query("SELECT * FROM fact_consensus_lines")
+    assert len(lines) == 14
     assert all(row["snapshot_time"] == SNAPSHOT for row in lines)
-    assert all(row["game_date"] == "2025-10-22" for row in lines)
 
 
-def test_consensus_line_medians(db, load_fixture):
-    payload = load_fixture("odds_api_event_odds.json")
-    ConsensusOddsIngestion(db).ingest_event_odds(payload, snapshot_time=SNAPSHOT)
+def test_prizepicks_normalizes_stat_types_lines_prices(db, load_fixture):
+    payload = load_fixture("prizepicks_projections.json")
+    ConsensusOddsIngestion(db).ingest_prizepicks(payload, snapshot_time=SNAPSHOT)
 
-    jokic_reb = db.query_one(
-        """
-        SELECT * FROM fact_consensus_lines
-        WHERE player_name = 'Nikola Jokic' AND market = 'player_rebounds'
-          AND bookmaker = ?
-        """,
-        (CONSENSUS_BOOKMAKER,),
-    )
+    def consensus(player_name, market):
+        return db.query_one(
+            """
+            SELECT * FROM fact_consensus_lines
+            WHERE player_name = ? AND market = ? AND bookmaker = ?
+            """,
+            (player_name, market, CONSENSUS_BOOKMAKER),
+        )
+
+    jokic_reb = consensus("Nikola Jokic", "player_rebounds")
     assert jokic_reb["is_consensus"] == 1
-    assert jokic_reb["line"] == 12.5  # median of 12.5, 13.5, 12.5
-    assert jokic_reb["over_price"] == -110  # median of -115, +100, -110
-    assert jokic_reb["under_price"] == -110  # median of -105, -122, -110
+    assert jokic_reb["line"] == 12.5
+    assert jokic_reb["over_price"] == -110  # flat PrizePicks payout
+    assert jokic_reb["under_price"] == -110
+    assert jokic_reb["event_id"] == "nba-evt-1"
+    assert jokic_reb["game_date"] == "2025-10-23"
 
-    lebron_reb = db.query_one("""
-        SELECT * FROM fact_consensus_lines
-        WHERE player_name = 'LeBron James' AND market = 'player_rebounds'
-          AND is_consensus = 1
-        """)
-    assert lebron_reb["line"] == 7.5
-    assert lebron_reb["over_price"] == -114  # median of -110, -118
-    assert lebron_reb["under_price"] == -107  # median of -110, -104
-
-
-def test_odds_market_with_missing_under_side(db, load_fixture):
-    payload = load_fixture("odds_api_event_odds.json")
-    ConsensusOddsIngestion(db).ingest_event_odds(payload, snapshot_time=SNAPSHOT)
-    threes = db.query_one("""
-        SELECT * FROM fact_consensus_lines
-        WHERE market = 'player_threes' AND bookmaker = 'betmgm'
-        """)
-    assert threes["line"] == 1.5
-    assert threes["over_price"] == -140
-    assert threes["under_price"] is None
+    assert consensus("Jayson Tatum", "player_points")["line"] == 26.5
+    assert consensus("Stephen Curry", "player_threes")["line"] == 4.5
+    assert (
+        consensus("Giannis Antetokounmpo", "player_points_rebounds_assists")["line"]
+        == 45.5
+    )
+    assert consensus("Nikola Jokic", "player_blocks")["line"] == 1.5
+    # unmapped stat types still persist under a slugged market key
+    assert consensus("Nikola Jokic", "player_dunks")["line"] == 1.5
 
 
-def test_odds_ingestion_links_known_players(db, load_fixture):
+def test_prizepicks_matchup_descriptions(db, load_fixture):
+    payload = load_fixture("prizepicks_projections.json")
+    ConsensusOddsIngestion(db).ingest_prizepicks(payload, snapshot_time=SNAPSHOT)
+
+    def teams(player_name):
+        return db.query_one(
+            """
+            SELECT home_team_abbr, away_team_abbr FROM fact_consensus_lines
+            WHERE player_name = ? AND is_consensus = 1 LIMIT 1
+            """,
+            (player_name,),
+        )
+
+    # "UTA" (opponent only) -> away=UTA, home unknown
+    row = teams("Nikola Jokic")
+    assert row["home_team_abbr"] is None
+    assert row["away_team_abbr"] == "UTA"
+    # "vs PHX" -> player's team (LAL) is home
+    row = teams("LeBron James")
+    assert row["home_team_abbr"] == "LAL"
+    assert row["away_team_abbr"] == "PHX"
+    # "GSW @ POR" -> explicit home/away
+    row = teams("Stephen Curry")
+    assert row["home_team_abbr"] == "POR"
+    assert row["away_team_abbr"] == "GSW"
+
+
+def test_prizepicks_links_known_players_and_sets_team(db, load_fixture):
     PlayerGameLogIngestion(db).ingest_rows(
         load_fixture("nba_player_game_log.json")["PlayerGameLog"]
     )
-    ConsensusOddsIngestion(db).ingest_event_odds(
-        load_fixture("odds_api_event_odds.json"), snapshot_time=SNAPSHOT
+    ConsensusOddsIngestion(db).ingest_prizepicks(
+        load_fixture("prizepicks_projections.json"), snapshot_time=SNAPSHOT
     )
 
     jokic = db.query_one("""
@@ -261,33 +278,41 @@ def test_odds_ingestion_links_known_players(db, load_fixture):
     lebron = db.query_one(
         "SELECT * FROM dim_players WHERE normalized_name = 'lebron james'"
     )
-    assert lebron is not None  # stub created for unknown odds players
+    assert lebron is not None  # stub created for unknown players
+    lal = db.team_id_for_abbr("LAL")
+    assert lebron["team_id"] == lal  # team from PrizePicks included attrs
 
 
-def test_odds_ingestion_maps_teams(db, load_fixture):
-    ConsensusOddsIngestion(db).ingest_event_odds(
-        load_fixture("odds_api_event_odds.json"), snapshot_time=SNAPSHOT
-    )
-    for abbr in ("LAL", "DEN"):
-        assert db.query_one(
-            "SELECT team_id FROM dim_teams WHERE abbreviation = ?", (abbr,)
-        )
-    row = db.query_one(
-        "SELECT home_team_abbr, away_team_abbr FROM fact_consensus_lines LIMIT 1"
-    )
-    assert row["home_team_abbr"] == "LAL"
-    assert row["away_team_abbr"] == "DEN"
-
-
-def test_odds_ingestion_is_idempotent(db, load_fixture):
-    payload = load_fixture("odds_api_event_odds.json")
+def test_prizepicks_ingestion_is_idempotent(db, load_fixture):
+    payload = load_fixture("prizepicks_projections.json")
     ingestion = ConsensusOddsIngestion(db)
-    ingestion.ingest_event_odds(payload, snapshot_time=SNAPSHOT)
-    ingestion.ingest_event_odds(payload, snapshot_time=SNAPSHOT)
-    assert db.query_one("SELECT COUNT(*) AS n FROM fact_consensus_lines")["n"] == 12
+    ingestion.ingest_prizepicks(payload, snapshot_time=SNAPSHOT)
+    ingestion.ingest_prizepicks(payload, snapshot_time=SNAPSHOT)
+    assert db.query_one("SELECT COUNT(*) AS n FROM fact_consensus_lines")["n"] == 14
 
 
-# --- OddsAPIClient with injected session ------------------------------------
+def test_ingest_underdog_fixture(db, load_fixture):
+    payload = load_fixture("underdog_lines.json")
+    written = ConsensusOddsIngestion(db).ingest_underdog(
+        payload, snapshot_time=SNAPSHOT
+    )
+
+    assert written == 4  # 2 lines x (bookmaker + consensus rows)
+
+    jokic = db.query_one("""
+        SELECT * FROM fact_consensus_lines
+        WHERE player_name = 'Nikola Jokic' AND market = 'player_rebounds'
+          AND bookmaker = 'underdog'
+        """)
+    assert jokic["line"] == 12.5
+    assert jokic["over_price"] == -118  # 1.85x payout -> -118
+    assert jokic["under_price"] == -105  # 1.95x payout -> -105
+    assert jokic["home_team_abbr"] == "UTA"
+    assert jokic["away_team_abbr"] == "DEN"
+    assert jokic["game_date"] == "2025-10-23"
+
+
+# --- clients with injected session -------------------------------------------
 
 
 class _FakeResponse:
@@ -319,33 +344,50 @@ class _FakeSession:
         return _FakeResponse(self._payloads.pop(0))
 
 
-def test_odds_client_morning_pull_offline(db, load_fixture):
-    events = load_fixture("odds_api_events.json")
-    odds = load_fixture("odds_api_event_odds.json")
-    session = _FakeSession([events, odds])
-    client = OddsAPIClient(
-        api_key="TEST_KEY",
-        session=session,
-        sleep_fn=lambda s: None,
-    )
+def test_prizepicks_client_morning_pull_offline(db, load_fixture):
+    projections = load_fixture("prizepicks_projections.json")
+    session = _FakeSession([projections])
+    client = PrizePicksClient(session=session, sleep_fn=lambda s: None)
 
-    written = ConsensusOddsIngestion(db, client).ingest_morning_pull()
+    result = ConsensusOddsIngestion(db, primary=client).ingest_morning_pull()
 
-    assert written == 12
-    assert session.calls[0]["url"].endswith("/sports/basketball_nba/events")
-    assert session.calls[1]["url"].endswith(
-        "/sports/basketball_nba/events/evt_den_lal_20251022/odds"
-    )
-    assert session.calls[1]["params"]["apiKey"] == "TEST_KEY"
-    assert "player_rebounds" in session.calls[1]["params"]["markets"]
+    assert result["source"] == "prizepicks"
+    assert result["written"] == 14
+    assert session.calls[0]["url"].endswith("/projections")
+    params = session.calls[0]["params"]
+    assert params["league_id"] == 7
+    # zero-auth: no API key, token, or auth header anywhere
+    assert "apiKey" not in params
+    assert "api_key" not in params
+    assert "Authorization" not in params
 
 
-def test_odds_client_retries_on_failure(load_fixture):
-    events = load_fixture("odds_api_events.json")
-    session = _FakeSession([events], fail_first=1)
-    client = OddsAPIClient(api_key="TEST_KEY", session=session, sleep_fn=lambda s: None)
-    assert client.get_events() == events
+def test_prizepicks_client_retries_on_failure(load_fixture):
+    projections = load_fixture("prizepicks_projections.json")
+    session = _FakeSession([projections], fail_first=1)
+    client = PrizePicksClient(session=session, sleep_fn=lambda s: None)
+    assert client.get_projections() == projections
     assert len(session.calls) == 2
+
+
+def test_morning_pull_falls_back_to_underdog(db, load_fixture):
+    underdog = load_fixture("underdog_lines.json")
+    primary_session = _FakeSession([], fail_first=10)
+    fallback_session = _FakeSession([underdog])
+    primary = PrizePicksClient(
+        max_retries=2, session=primary_session, sleep_fn=lambda s: None
+    )
+    fallback = UnderdogClient(session=fallback_session, sleep_fn=lambda s: None)
+
+    result = ConsensusOddsIngestion(
+        db, primary=primary, fallback=fallback
+    ).ingest_morning_pull()
+
+    assert result["source"] == "underdog"
+    assert result["written"] == 4
+    assert result["primary_error"]
+    assert len(fallback_session.calls) == 1
+    assert fallback_session.calls[0]["url"].endswith("/beta/v3/over_under_lines")
 
 
 # --- injury report parsing --------------------------------------------------
@@ -369,12 +411,12 @@ def test_ingestion_runs_are_logged(db, load_fixture):
     PlayerGameLogIngestion(db).ingest_rows(
         load_fixture("nba_player_game_log.json")["PlayerGameLog"]
     )
-    ConsensusOddsIngestion(db).ingest_event_odds(
-        load_fixture("odds_api_event_odds.json"), snapshot_time=SNAPSHOT
+    ConsensusOddsIngestion(db).ingest_prizepicks(
+        load_fixture("prizepicks_projections.json"), snapshot_time=SNAPSHOT
     )
     runs = db.query(
         "SELECT source, records_written FROM ingestion_runs ORDER BY run_id"
     )
     sources = {r["source"]: r["records_written"] for r in runs}
     assert sources["nba_stats.player_game_log"] == 3
-    assert sources["consensus_odds.event_odds"] == 12
+    assert sources["consensus_odds.prizepicks"] == 14

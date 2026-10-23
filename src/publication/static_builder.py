@@ -28,11 +28,16 @@ MARKET_TO_STAT = {
     "player_points_rebounds_assists": "pra",
     "player_points_rebounds": "pr",
     "player_points_assists": "pa",
+    "player_rebounds_assists": "ra",
+    "player_blocks": "blk",
+    "player_steals": "stl",
+    "player_turnovers": "tov",
 }
 COMBO_STATS = {
     "pra": ("pts", "reb", "ast"),
     "pr": ("pts", "reb"),
     "pa": ("pts", "ast"),
+    "ra": ("reb", "ast"),
 }
 WEB_DIR = Path(__file__).resolve().parents[2] / "web"
 
@@ -193,7 +198,7 @@ class SlateGenerator:
             opp_abbr = (
                 line_row["away_team_abbr"]
                 if player and player["team_abbr"] == line_row["home_team_abbr"]
-                else line_row["home_team_abbr"]
+                else (line_row["home_team_abbr"] or line_row["away_team_abbr"])
             )
             opp_id = self.db.team_id_for_abbr(opp_abbr) if opp_abbr else None
             is_home = (

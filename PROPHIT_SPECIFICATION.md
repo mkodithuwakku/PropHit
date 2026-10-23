@@ -23,7 +23,7 @@ The platform builds a responsive, mobile-first static dashboard deployed daily v
 flowchart TD
     subgraph Data_Acquisition[1. Free Ingestion Layer (Morning Run)]
         NBA[nba_api: Box Scores, Advanced, Tracking, Hustle]
-        Odds[Consensus Odds API: The Odds API / Aggregator]
+        Odds[PrizePicks Public Projections + Underdog Fallback]
         Injuries[Official NBA Injury Report PDF/JSON]
         Schedule[NBA B2B / Rest / Altitude / Schedule]
     end
@@ -73,9 +73,11 @@ flowchart TD
 2. **Schedule & Contextual Data:**
    - Days of rest (B2B, 3-in-4, travel distance, altitude games e.g., DEN/UTA).
    - Game totals & point spreads (Vegas game totals indicate pace and blowout risk).
-3. **Consensus Line Aggregator:**
-   - Source: **The Odds API** (Free tier: 500 requests/month; 1 daily morning pull = ~30 requests/month) or public aggregator JSON feeds (Action Network / Rotowire consensus).
-   - Target markets: Player Points, Rebounds, Assists, 3-Pointers Made (3PM), Combos (PRA, PR, PA).
+3. **Consensus Line Aggregator (100% free, zero-auth):**
+   - Primary Source: **PrizePicks Public REST API** (`https://api.prizepicks.com/projections?league_id=7` for NBA). Returns the entire evening slate of player props in a single morning JSON payload.
+   - Secondary Fallback: **Underdog Fantasy** public over/under lines, used automatically if the primary pull fails.
+   - Auth Required: **NONE** — 100% free, unauthenticated, zero secrets or tokens.
+   - Target markets: Player Points, Rebounds, Assists, 3-Pointers Made (3PM), and Combos (Pts+Rebs+Asts).
 4. **Official Injury Feed:**
    - Official NBA 1:30 PM / morning injury reports.
    - Logic: Identify confirmed OUT, Questionable, and Probable players to compute **Vacated Usage** and **Vacated Minutes**.
@@ -283,7 +285,7 @@ Prophit/
 │   ├── __init__.py
 │   ├── ingestion/
 │   │   ├── nba_stats.py               # nba_api wrappers with rate-limiting
-│   │   ├── consensus_odds.py          # The Odds API / Aggregator client
+│   │   ├── consensus_odds.py          # PrizePicks + Underdog public lines client
 │   │   └── injuries.py                # NBA injury report parser
 │   ├── features/
 │   │   ├── feature_store.py           # Feature transformations & EWMA

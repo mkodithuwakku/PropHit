@@ -14,7 +14,6 @@ Usage:
 from __future__ import annotations
 
 import argparse
-import os
 from datetime import date as _date
 from pathlib import Path
 from typing import Optional
@@ -25,11 +24,26 @@ from src.publication.static_builder import SlateGenerator, StaticSiteBuilder
 
 
 def maybe_ingest_live(db: ProphitDB) -> dict:
-    """Live ingestion — skipped unless THE_ODDS_API_KEY is configured."""
-    if not os.environ.get("THE_ODDS_API_KEY"):
-        return {"ingested": False, "reason": "THE_ODDS_API_KEY not set"}
-    # Live pulls land here (nba_stats/consensus_odds adapters, M1).
-    return {"ingested": False, "reason": "live pull not enabled in this run"}
+    """Live consensus pull via zero-auth public feeds (no keys needed).
+
+    PrizePicks public projections is the primary source; Underdog
+    Fantasy public over/under lines is the automatic fallback.
+    """
+    from src.ingestion.consensus_odds import (
+        ConsensusOddsIngestion,
+        PrizePicksClient,
+        UnderdogClient,
+    )
+
+    try:
+        return {
+            "ingested": True,
+            **ConsensusOddsIngestion(
+                db, primary=PrizePicksClient(), fallback=UnderdogClient()
+            ).ingest_morning_pull(),
+        }
+    except Exception as exc:
+        return {"ingested": False, "reason": str(exc)}
 
 
 def run_refresh(

@@ -1,20 +1,21 @@
-"""Consensus odds ingestion adapter.
+"""Consensus prop-line ingestion — 100% free, zero-auth public sources.
 
-Wraps The Odds API v4 (or a compatible aggregator) with bounded retries and
-caching into SQLite per SRD Section 3.1.3. The HTTP session is injectable so
-tests replay fixture payloads with zero network calls.
+Primary source: PrizePicks Public REST API
+  ``GET https://api.prizepicks.com/projections?league_id=7`` (NBA)
+  returns the entire evening slate in one JSON:API payload — no key, no
+  headers, no rate limits on a single daily pull.
+Fallback: Underdog Fantasy public over/under lines.
 
-Storage model (fact_consensus_lines):
-  - One row per (event, player, market, bookmaker, snapshot) with the book's
-    line and over/under American prices.
-  - One additional row per (event, player, market) with
-    ``bookmaker='CONSENSUS'`` and ``is_consensus=1`` holding the median line
-    and median prices across books.
+Both adaptors normalize into the same ``fact_consensus_lines`` schema:
+``player_name``, ``stat_type``/market, ``line``, ``over_price``,
+``under_price`` (flat -110 unless the source gives payouts), ``game_date``.
+Each source row is written once per bookmaker plus once as the
+``CONSENSUS`` row so the rest of the pipeline is source-agnostic.
 """
 
 from __future__ import annotations
 
-import statistics
+import re
 import time
 from typing import Any, Callable, Optional
 
@@ -23,16 +24,32 @@ import requests
 from src.ingestion.db import ProphitDB
 
 CONSENSUS_BOOKMAKER = "CONSENSUS"
+PRIZEPICKS_BOOKMAKER = "prizepicks"
+UNDERDOG_BOOKMAKER = "underdog"
+FLAT_PRICE = -110  # PrizePicks-style flat payout -> -110 equivalent
 
-DEFAULT_MARKETS = [
-    "player_points",
-    "player_rebounds",
-    "player_assists",
-    "player_threes",
-    "player_points_rebounds_assists",
-    "player_points_rebounds",
-    "player_points_assists",
-]
+PP_STAT_TYPE_TO_MARKET = {
+    "Points": "player_points",
+    "Rebounds": "player_rebounds",
+    "Assists": "player_assists",
+    "3-PT Made": "player_threes",
+    "Pts+Rebs+Asts": "player_points_rebounds_assists",
+    "Pts+Rebs": "player_points_rebounds",
+    "Pts+Asts": "player_points_assists",
+    "Rebs+Asts": "player_rebounds_assists",
+    "Blocked Shots": "player_blocks",
+    "Steals": "player_steals",
+    "Turnovers": "player_turnovers",
+}
+
+
+def _market_key(stat_type: Optional[str]) -> Optional[str]:
+    if not stat_type:
+        return None
+    if stat_type in PP_STAT_TYPE_TO_MARKET:
+        return PP_STAT_TYPE_TO_MARKET[stat_type]
+    slug = re.sub(r"[^a-z0-9]+", "_", stat_type.strip().lower()).strip("_")
+    return f"player_{slug}" if slug else None
 
 
 def _to_float(value: Any) -> Optional[float]:
@@ -44,246 +61,318 @@ def _to_float(value: Any) -> Optional[float]:
         return None
 
 
-def _to_int(value: Any) -> Optional[int]:
-    if value is None or value == "":
+def _multiplier_to_american(mult: Optional[float]) -> Optional[int]:
+    if not mult or mult <= 1.0:
         return None
-    try:
-        return int(float(value))
-    except (TypeError, ValueError):
-        return None
+    if mult >= 2.0:
+        return int(round((mult - 1.0) * 100.0))
+    return int(round(-100.0 / (mult - 1.0)))
 
 
-class OddsAPIClient:
-    """Minimal client for The Odds API v4 with retry + backoff."""
+class _RetryingClient:
+    """Shared zero-auth HTTP client with bounded retry + backoff."""
 
     def __init__(
         self,
-        api_key: Optional[str] = None,
-        base_url: str = "https://api.the-odds-api.com/v4",
-        sport: str = "basketball_nba",
-        regions: str = "us",
-        odds_format: str = "american",
-        markets: Optional[list[str]] = None,
+        base_url: str,
         max_retries: int = 3,
         session: Optional[requests.Session] = None,
         sleep_fn: Callable[[float], None] = time.sleep,
     ):
-        self.api_key = api_key
         self.base_url = base_url.rstrip("/")
-        self.sport = sport
-        self.regions = regions
-        self.odds_format = odds_format
-        self.markets = markets or DEFAULT_MARKETS
         self.max_retries = max_retries
         self.session = session or requests.Session()
         self._sleep = sleep_fn
 
-    def _get(self, path: str, params: dict) -> Any:
-        params = {**params, "apiKey": self.api_key}
+    def _get_json(self, path: str, params: Optional[dict] = None) -> Any:
         url = f"{self.base_url}{path}"
         last_error: Optional[Exception] = None
         for attempt in range(self.max_retries):
             try:
-                response = self.session.get(url, params=params, timeout=30)
+                response = self.session.get(url, params=params or {}, timeout=30)
                 response.raise_for_status()
                 return response.json()
             except requests.RequestException as exc:
                 last_error = exc
                 self._sleep(min(0.5 * (2**attempt), 4.0))
         raise RuntimeError(
-            f"Odds API request {path} failed after {self.max_retries} attempts"
+            f"GET {url} failed after {self.max_retries} attempts"
         ) from last_error
 
-    def get_events(self) -> list[dict]:
-        return self._get(f"/sports/{self.sport}/events", {})
 
-    def get_event_odds(
-        self, event_id: str, markets: Optional[list[str]] = None
-    ) -> dict:
-        return self._get(
-            f"/sports/{self.sport}/events/{event_id}/odds",
-            {
-                "regions": self.regions,
-                "oddsFormat": self.odds_format,
-                "markets": ",".join(markets or self.markets),
-            },
+class PrizePicksClient(_RetryingClient):
+    """Zero-auth client for the PrizePicks public projections feed."""
+
+    def __init__(self, league_id: int = 7, **kwargs):
+        super().__init__("https://api.prizepicks.com", **kwargs)
+        self.league_id = league_id
+
+    def get_projections(self) -> dict:
+        return self._get_json(
+            "/projections",
+            {"league_id": self.league_id, "single_stat": "true"},
         )
 
 
+class UnderdogClient(_RetryingClient):
+    """Zero-auth fallback client for Underdog public over/under lines."""
+
+    def __init__(self, **kwargs):
+        super().__init__("https://api.underdogfantasy.com", **kwargs)
+
+    def get_over_under_lines(self) -> dict:
+        return self._get_json("/beta/v3/over_under_lines", {"sport": "nba"})
+
+
 class ConsensusOddsIngestion:
-    """Parses event-odds payloads and persists bookmaker + consensus lines."""
+    """Parses PrizePicks/Underdog payloads into fact_consensus_lines."""
 
     def __init__(
         self,
         db: ProphitDB,
-        client: Optional[OddsAPIClient] = None,
+        primary: Optional[PrizePicksClient] = None,
+        fallback: Optional[UnderdogClient] = None,
         snapshot_time: Optional[str] = None,
     ):
         self.db = db
-        self.client = client
+        self.primary = primary
+        self.fallback = fallback
         self._snapshot_time = snapshot_time
 
-    def ingest_morning_pull(self, markets: Optional[list[str]] = None) -> int:
-        """Full daily pull: list events, fetch odds per event, store all."""
-        if self.client is None:
-            raise ValueError("ingest_morning_pull requires an OddsAPIClient")
-        written = 0
-        for event in self.client.get_events():
-            payload = self.client.get_event_odds(event["id"], markets)
-            payload.setdefault("home_team", event.get("home_team"))
-            payload.setdefault("away_team", event.get("away_team"))
-            payload.setdefault("commence_time", event.get("commence_time"))
-            written += self.ingest_event_odds(payload)
-        return written
+    # --- live pull ---------------------------------------------------------
 
-    def ingest_event_odds(
+    def ingest_morning_pull(self) -> dict:
+        """Daily pull: PrizePicks primary, Underdog fallback on failure."""
+        if self.primary is None and self.fallback is None:
+            raise ValueError("ingest_morning_pull requires a client")
+        if self.primary is not None:
+            try:
+                payload = self.primary.get_projections()
+                return {
+                    "source": PRIZEPICKS_BOOKMAKER,
+                    "written": self.ingest_prizepicks(payload),
+                }
+            except Exception as exc:
+                if self.fallback is None:
+                    raise
+                primary_error = str(exc)
+        else:
+            primary_error = "no primary client"
+
+        if self.fallback is None:
+            raise RuntimeError(f"primary failed: {primary_error}")
+        payload = self.fallback.get_over_under_lines()
+        result = {
+            "source": UNDERDOG_BOOKMAKER,
+            "written": self.ingest_underdog(payload),
+            "primary_error": primary_error,
+        }
+        return result
+
+    # --- PrizePicks ---------------------------------------------------------
+
+    def ingest_prizepicks(
         self, payload: dict, snapshot_time: Optional[str] = None
     ) -> int:
-        """Persist one event's odds payload. Pure & offline-safe."""
+        """Persist a PrizePicks JSON:API payload. Pure & offline-safe."""
         from src.ingestion.db import utcnow_iso
 
         snapshot = snapshot_time or self._snapshot_time or utcnow_iso()
-        event_id = str(payload.get("id", ""))
-        commence_time = payload.get("commence_time")
-        game_date = (commence_time or "")[:10] or None
-
-        home_team_id, away_team_id = None, None
-        home_abbr = self._team_abbr(payload.get("home_team"))
-        away_abbr = self._team_abbr(payload.get("away_team"))
-        if home_abbr:
-            home_team_id = self.db.team_id_for_abbr(home_abbr)
-        if away_abbr:
-            away_team_id = self.db.team_id_for_abbr(away_abbr)
-
-        # player/market -> list of per-book line records
-        grouped: dict[tuple[str, str], list[dict]] = {}
-        for bookmaker in payload.get("bookmakers", []):
-            book_key = bookmaker.get("key") or bookmaker.get("title") or "?"
-            for market in bookmaker.get("markets", []):
-                market_key = market.get("key")
-                for player_name, record in self._parse_market(market, book_key).items():
-                    grouped.setdefault((player_name, market_key), []).append(record)
+        players = {
+            inc["id"]: inc.get("attributes", {})
+            for inc in payload.get("included", [])
+            if inc.get("type") in ("new_player", "player")
+        }
 
         written = 0
-        for (player_name, market_key), records in grouped.items():
-            player_id = self.db.player_id_for_name(player_name)
-            if player_id is None:
-                # Create a stub dim_player so FK + future joins stay intact.
-                player_id = self.db.get_or_create_player_id(player_name)
+        for proj in payload.get("data", []):
+            attrs = proj.get("attributes", {})
+            rel = proj.get("relationships", {}).get("new_player", {})
+            player_ref = (rel.get("data") or {}).get("id")
+            player = players.get(player_ref, {})
 
-            base = {
-                "event_id": event_id,
-                "game_date": game_date,
-                "home_team_abbr": home_abbr,
-                "away_team_abbr": away_abbr,
-                "player_id": player_id,
-                "player_name": player_name,
-                "market": market_key,
-                "snapshot_time": snapshot,
-                "commence_time": commence_time,
-            }
-            for record in records:
-                self.db.insert_consensus_line({**base, **record, "is_consensus": 0})
-                written += 1
+            player_name = player.get("name") or attrs.get("player_name")
+            market = _market_key(attrs.get("stat_type"))
+            line = _to_float(attrs.get("line_score"))
+            if not player_name or market is None or line is None:
+                continue
 
-            consensus = self._consensus(records)
-            if consensus:
-                self.db.insert_consensus_line(
-                    {
-                        **base,
-                        **consensus,
-                        "bookmaker": CONSENSUS_BOOKMAKER,
-                        "is_consensus": 1,
-                    }
-                )
-                written += 1
+            team_abbr = player.get("team")
+            home_abbr, away_abbr = self._pp_matchup(attrs.get("description"), team_abbr)
+            commence = attrs.get("start_time")
+            event_id = str(
+                attrs.get("game_id") or f"pp-{(commence or '')[:10]}-{player_name}"
+            )
+            position = player.get("position")
 
-        self.db.log_ingestion("consensus_odds.event_odds", written)
+            written += self._write_line(
+                bookmaker=PRIZEPICKS_BOOKMAKER,
+                event_id=event_id,
+                player_name=player_name,
+                market=market,
+                line=line,
+                over_price=FLAT_PRICE,
+                under_price=FLAT_PRICE,
+                snapshot=snapshot,
+                commence_time=commence,
+                home_abbr=home_abbr,
+                away_abbr=away_abbr,
+                team_abbr=team_abbr,
+                position=position,
+            )
+        self.db.log_ingestion("consensus_odds.prizepicks", written)
         return written
 
     @staticmethod
-    def _team_abbr(full_team_name: Optional[str]) -> Optional[str]:
-        """The Odds API uses full names ('Los Angeles Lakers'); map to abbr."""
-        if not full_team_name:
-            return None
-        return TEAM_NAME_TO_ABBR.get(full_team_name)
+    def _pp_matchup(
+        description: Optional[str], team_abbr: Optional[str]
+    ) -> tuple[Optional[str], Optional[str]]:
+        """Parse PrizePicks description into (home_abbr, away_abbr).
 
-    @staticmethod
-    def _parse_market(market: dict, book_key: str) -> dict[str, dict]:
-        """Extract per-player {player_name: line_record} from one market."""
-        over: dict[str, dict] = {}
-        under: dict[str, dict] = {}
-        for outcome in market.get("outcomes", []):
-            name = outcome.get("description") or outcome.get("participant")
-            if not name:
+        Formats seen: 'UTA' (opponent only), 'vs UTA', 'DEN @ UTA',
+        '@ UTA'. Opponent-only descriptions store the opponent as away and
+        leave home None — home/away is not part of the public payload.
+        """
+        if not description:
+            return None, None
+        desc = str(description).strip()
+        if "@" in desc:
+            away, _, home = desc.partition("@")
+            return home.strip() or None, away.strip() or None
+        if desc.lower().startswith("vs"):
+            opp = desc[2:].strip()
+            return team_abbr, opp or None
+        return None, desc or None
+
+    # --- Underdog fallback ---------------------------------------------------
+
+    def ingest_underdog(
+        self, payload: dict, snapshot_time: Optional[str] = None
+    ) -> int:
+        """Persist an Underdog over_under_lines payload (best-effort)."""
+        from src.ingestion.db import utcnow_iso
+
+        snapshot = snapshot_time or self._snapshot_time or utcnow_iso()
+        players = {p["id"]: p for p in payload.get("players", [])}
+        games = {g["id"]: g for g in payload.get("games", [])}
+
+        written = 0
+        for entry in payload.get("over_under_lines", []):
+            ou = entry.get("over_under", entry)
+            stat_meta = ou.get("appearance_stat") or ou.get("stat") or {}
+            stat_type = (
+                stat_meta.get("display_stat") or stat_meta.get("abbr") or ou.get("stat")
+            )
+            market = _market_key(stat_type)
+            line = _to_float(ou.get("stat_value"))
+            if line is None:
+                line = self._line_from_title(ou.get("title"))
+
+            player = players.get(ou.get("player_id")) or {}
+            player_name = (
+                f"{player.get('first_name', '')} " f"{player.get('last_name', '')}"
+            ).strip() or ou.get("player_name")
+            if not player_name or market is None or line is None:
                 continue
-            side = (outcome.get("name") or "").lower()
-            entry = {
-                "price": _to_int(outcome.get("price")),
-                "point": _to_float(outcome.get("point")),
-            }
-            if side == "over":
-                over[name] = entry
-            elif side == "under":
-                under[name] = entry
 
-        players: dict[str, dict] = {}
-        for player_name, o in over.items():
-            u = under.get(player_name, {})
-            players[player_name] = {
-                "bookmaker": book_key,
-                "line": (
-                    o.get("point") if o.get("point") is not None else u.get("point")
-                ),
-                "over_price": o.get("price"),
-                "under_price": u.get("price"),
-            }
-        return players
+            game = games.get(ou.get("game_id")) or {}
+            prices = self._ud_prices(entry.get("options", []))
+            written += self._write_line(
+                bookmaker=UNDERDOG_BOOKMAKER,
+                event_id=str(ou.get("game_id") or entry.get("id") or "ud"),
+                player_name=player_name,
+                market=market,
+                line=line,
+                over_price=prices[0],
+                under_price=prices[1],
+                snapshot=snapshot,
+                commence_time=game.get("scheduled_at"),
+                home_abbr=game.get("home_team_id"),
+                away_abbr=game.get("away_team_id"),
+                team_abbr=player.get("team_id"),
+                position=player.get("position"),
+            )
+        self.db.log_ingestion("consensus_odds.underdog", written)
+        return written
 
     @staticmethod
-    def _consensus(records: list[dict]) -> Optional[dict]:
-        """Median line and median prices across books."""
-        lines = [r["line"] for r in records if r.get("line") is not None]
-        overs = [r["over_price"] for r in records if r.get("over_price") is not None]
-        unders = [r["under_price"] for r in records if r.get("under_price") is not None]
-        if not lines and not overs and not unders:
+    def _line_from_title(title: Optional[str]) -> Optional[float]:
+        if not title:
             return None
-        return {
-            "line": statistics.median(lines) if lines else None,
-            "over_price": round(statistics.median(overs)) if overs else None,
-            "under_price": (round(statistics.median(unders)) if unders else None),
+        m = re.search(r"(\d+(?:\.\d+)?)", str(title))
+        return float(m.group(1)) if m else None
+
+    @staticmethod
+    def _ud_prices(options: list) -> tuple[Optional[int], Optional[int]]:
+        over = under = None
+        for opt in options:
+            choice = (opt.get("choice") or "").lower()
+            american = _multiplier_to_american(_to_float(opt.get("payout_multiplier")))
+            if choice in ("higher", "over"):
+                over = american
+            elif choice in ("lower", "under"):
+                under = american
+        return (
+            over if over is not None else FLAT_PRICE,
+            under if under is not None else FLAT_PRICE,
+        )
+
+    # --- shared writer --------------------------------------------------------
+
+    def _write_line(
+        self,
+        bookmaker: str,
+        event_id: str,
+        player_name: str,
+        market: str,
+        line: float,
+        over_price: Optional[int],
+        under_price: Optional[int],
+        snapshot: str,
+        commence_time: Optional[str],
+        home_abbr: Optional[str],
+        away_abbr: Optional[str],
+        team_abbr: Optional[str],
+        position: Optional[str] = None,
+    ) -> int:
+        """Write the bookmaker row + the CONSENSUS mirror row."""
+        player_id = self.db.player_id_for_name(player_name)
+        if player_id is None:
+            player_id = self.db.get_or_create_player_id(player_name)
+        if team_abbr:
+            team_id = self.db.team_id_for_abbr(team_abbr)
+            self.db.execute(
+                "UPDATE dim_players SET team_id = ?, position = "
+                "COALESCE(?, position) WHERE player_id = ?",
+                (team_id, position, player_id),
+            )
+        if home_abbr:
+            self.db.team_id_for_abbr(home_abbr)
+        if away_abbr:
+            self.db.team_id_for_abbr(away_abbr)
+
+        base = {
+            "event_id": event_id,
+            "game_date": (commence_time or "")[:10] or None,
+            "home_team_abbr": home_abbr,
+            "away_team_abbr": away_abbr,
+            "player_id": player_id,
+            "player_name": player_name,
+            "market": market,
+            "line": line,
+            "over_price": over_price,
+            "under_price": under_price,
+            "snapshot_time": snapshot,
+            "commence_time": commence_time,
         }
-
-
-TEAM_NAME_TO_ABBR = {
-    "Atlanta Hawks": "ATL",
-    "Boston Celtics": "BOS",
-    "Brooklyn Nets": "BKN",
-    "Charlotte Hornets": "CHA",
-    "Chicago Bulls": "CHI",
-    "Cleveland Cavaliers": "CLE",
-    "Dallas Mavericks": "DAL",
-    "Denver Nuggets": "DEN",
-    "Detroit Pistons": "DET",
-    "Golden State Warriors": "GSW",
-    "Houston Rockets": "HOU",
-    "Indiana Pacers": "IND",
-    "Los Angeles Clippers": "LAC",
-    "Los Angeles Lakers": "LAL",
-    "Memphis Grizzlies": "MEM",
-    "Miami Heat": "MIA",
-    "Milwaukee Bucks": "MIL",
-    "Minnesota Timberwolves": "MIN",
-    "New Orleans Pelicans": "NOP",
-    "New York Knicks": "NYK",
-    "Oklahoma City Thunder": "OKC",
-    "Orlando Magic": "ORL",
-    "Philadelphia 76ers": "PHI",
-    "Phoenix Suns": "PHX",
-    "Portland Trail Blazers": "POR",
-    "Sacramento Kings": "SAC",
-    "San Antonio Spurs": "SAS",
-    "Toronto Raptors": "TOR",
-    "Utah Jazz": "UTA",
-    "Washington Wizards": "WAS",
-}
+        self.db.insert_consensus_line(
+            {**base, "bookmaker": bookmaker, "is_consensus": 0}
+        )
+        self.db.insert_consensus_line(
+            {
+                **base,
+                "bookmaker": CONSENSUS_BOOKMAKER,
+                "is_consensus": 1,
+            }
+        )
+        return 2

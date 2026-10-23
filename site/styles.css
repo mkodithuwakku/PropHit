@@ -195,6 +195,18 @@ body {
   letter-spacing: 0.02em;
 }
 
+.avatar .initials {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+}
+
+.avatar.loaded .initials {
+  display: none;
+}
+
 .avatar img {
   position: absolute;
   inset: 0;
@@ -202,6 +214,7 @@ body {
   height: 100%;
   object-fit: cover;
   object-position: top;
+  background: #1b1924;
 }
 
 .player-block {
@@ -314,6 +327,11 @@ body {
   transition: width 0.4s ease;
 }
 
+.prob-fill.under {
+  margin-left: auto;
+  background: linear-gradient(270deg, var(--accent), var(--edge-positive));
+}
+
 .prob-labels {
   display: flex;
   justify-content: space-between;
@@ -322,8 +340,7 @@ body {
   color: var(--text-muted);
 }
 
-.prob-labels .over { color: var(--edge-positive); font-weight: 700; }
-.prob-labels .under { font-weight: 600; }
+.prob-labels .favored { color: var(--edge-positive); font-weight: 700; }
 
 .milestone-flag {
   display: inline-flex;

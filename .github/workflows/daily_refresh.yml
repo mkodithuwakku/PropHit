@@ -21,8 +21,7 @@ jobs:
       - name: Install dependencies
         run: pip install -r requirements.txt
       - name: Run daily refresh
-        env:
-          THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
+        # Zero-auth public feeds (PrizePicks -> Underdog): no secrets needed
         run: |
           python -m src.publication.daily_refresh \
             --db data/prophit.db --out site --live
