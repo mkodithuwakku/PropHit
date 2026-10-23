@@ -1,0 +1,36 @@
+name: Daily Morning Refresh
+
+on:
+  # 12:30 UTC ~ 7:30-8:30 AM ET morning run window (SRD 3.2)
+  schedule:
+    - cron: "30 12 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.13"
+          cache: pip
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+      - name: Run daily refresh
+        env:
+          THE_ODDS_API_KEY: ${{ secrets.THE_ODDS_API_KEY }}
+        run: |
+          python -m src.publication.daily_refresh \
+            --db data/prophit.db --out site --live
+      - name: Commit updated slate
+        run: |
+          git config user.name "prophit-bot"
+          git config user.email "prophit-bot@users.noreply.github.com"
+          git add site data/prophit.db
+          git diff --cached --quiet || \
+            git commit -m "Daily slate refresh $(date -u +%Y-%m-%d)"
+          git push

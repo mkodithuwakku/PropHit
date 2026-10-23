@@ -1,0 +1,28 @@
+{
+  "LeagueDashPtTeamDefend": [
+    {
+      "TEAM_ID": 1610612744,
+      "TEAM_NAME": "Golden State Warriors",
+      "TEAM_ABBREVIATION": "GSW",
+      "DEFENSE_CATEGORY": "Overall",
+      "DEF_RATING": 112.4,
+      "DEF_RATING_RANK": 18,
+      "OPP_PTS": 114.2,
+      "OPP_REB": 44.1,
+      "OPP_AST": 26.8,
+      "OPP_FG3M": 13.9
+    },
+    {
+      "TEAM_ID": 1610612762,
+      "TEAM_NAME": "Utah Jazz",
+      "TEAM_ABBREVIATION": "UTA",
+      "DEFENSE_CATEGORY": "Overall",
+      "DEF_RATING": 118.9,
+      "DEF_RATING_RANK": 29,
+      "OPP_PTS": 121.5,
+      "OPP_REB": 47.3,
+      "OPP_AST": 28.9,
+      "OPP_FG3M": 14.8
+    }
+  ]
+}

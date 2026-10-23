@@ -1,0 +1,7 @@
+[
+  {"player": "Jamal Murray", "team": "DEN", "status": "Out", "reason": "Hamstring", "date": "2025-10-22"},
+  {"player": "Anthony Davis", "team": "LAL", "status": "Questionable", "reason": "Ankle", "date": "2025-10-22"},
+  {"player": "LeBron James", "team": "LAL", "status": "Probable", "reason": "Rest", "date": "2025-10-22"},
+  {"player": "", "team": "DEN", "status": "Out", "date": "2025-10-22"},
+  {"player": "Aaron Gordon", "team": "DEN", "status": "Gameday", "date": "2025-10-22"}
+]

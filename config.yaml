@@ -1,0 +1,38 @@
+# Prophit runtime configuration.
+# Secrets are NEVER stored here — API keys are read from environment variables.
+
+database:
+  path: data/prophit.db
+
+ingestion:
+  nba_stats:
+    # Per Section 3.2: 0.5s-2s spacing between NBA Stats calls.
+    sleep_seconds: 0.6
+    max_retries: 3
+    timeout_seconds: 30
+  odds_api:
+    base_url: https://api.the-odds-api.com/v4
+    api_key_env: THE_ODDS_API_KEY
+    regions: us
+    odds_format: american
+    markets:
+      - player_points
+      - player_rebounds
+      - player_assists
+      - player_threes
+      - player_points_rebounds_assists
+      - player_points_rebounds
+      - player_points_assists
+
+decision:
+  min_ev_pct: 5.0            # +EV threshold to flag a Recommended Play
+  max_american_odds: 300     # do not recommend worse than +300
+  min_american_odds: -300    # do not recommend heavier than -300
+  milestone_trigger_diff: 2.0  # model - consensus >= 2.0 triggers ladder pricing
+  milestone_ladder_offsets: [0, 2, 4]  # offsets above first round int > line
+  milestone_alt_margin: 25             # target price = fair + 25 margin
+
+models:
+  minutes_model_path: models/minutes_lgbm.txt
+  stat_models_dir: models/stat_models
+  monte_carlo_trials: 10000

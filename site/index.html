@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover"
+    />
+    <title>Prophit — Daily NBA Prop Slate</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <header class="slate-header">
+      <div class="header-row">
+        <h1>Prophit</h1>
+        <span id="slate-date" class="slate-date"></span>
+      </div>
+      <p id="slate-summary" class="slate-summary">Loading slate…</p>
+    </header>
+
+    <nav class="filter-tabs" id="filter-tabs" aria-label="Play filters">
+      <button data-filter="value" class="tab active">Top Value</button>
+      <button data-filter="milestones" class="tab">Milestones</button>
+      <button data-filter="pts" class="tab">Points</button>
+      <button data-filter="reb" class="tab">Rebounds</button>
+      <button data-filter="ast" class="tab">Assists</button>
+      <button data-filter="all" class="tab">All Plays</button>
+    </nav>
+
+    <main id="plays" class="plays" aria-live="polite"></main>
+
+    <footer class="slate-footer">
+      <span id="generated-at"></span>
+    </footer>
+
+    <script src="app.js"></script>
+  </body>
+</html>

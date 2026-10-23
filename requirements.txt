@@ -1,0 +1,8 @@
+nba_api>=1.4.0
+requests>=2.31.0
+pandas>=2.0.0
+numpy>=1.24.0
+PyYAML>=6.0.0
+lightgbm>=4.0.0
+statsmodels>=0.14.0
+scipy>=1.10.0

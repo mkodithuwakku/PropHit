@@ -1,0 +1,263 @@
+/* Prophit design system — charcoal base, plum undertones (SRD 7.1) */
+:root {
+  --bg-base: #121316;
+  --bg-raised: #1c1a24;
+  --bg-card: #201e2a;
+  --bg-tray: #17161e;
+  --border: #2a2836;
+  --text-primary: #f2f0f7;
+  --text-muted: #9a96a8;
+  --edge-positive: #4ade80;
+  --edge-neutral: #fbbf24;
+  --edge-caution: #f87171;
+  --accent: #8b7fd4;
+}
+
+* {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  max-width: 430px;
+  margin: 0 auto;
+  min-height: 100vh;
+  font-size: 15px;
+}
+
+/* --- sticky header --- */
+.slate-header {
+  position: sticky;
+  top: 0;
+  background: var(--bg-raised);
+  padding: 14px 16px 10px;
+  border-bottom: 1px solid var(--border);
+  z-index: 10;
+}
+
+.header-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+}
+
+.slate-header h1 {
+  font-size: 1.2rem;
+  letter-spacing: 0.06em;
+}
+
+.slate-date {
+  color: var(--accent);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.slate-summary {
+  color: var(--text-muted);
+  font-size: 0.8rem;
+  margin-top: 2px;
+}
+
+/* --- filter tabs --- */
+.filter-tabs {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  padding: 10px 16px;
+  scrollbar-width: none;
+  position: sticky;
+  top: 62px;
+  background: var(--bg-base);
+  z-index: 9;
+}
+
+.filter-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.tab {
+  background: var(--bg-card);
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  padding: 7px 14px;
+  font-size: 0.8rem;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.tab.active {
+  color: var(--text-primary);
+  border-color: var(--accent);
+  background: var(--bg-raised);
+}
+
+/* --- play cards --- */
+.plays {
+  padding: 6px 16px 40px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.play-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 14px;
+}
+
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.player-name {
+  font-weight: 650;
+  font-size: 0.95rem;
+}
+
+.player-meta {
+  color: var(--text-muted);
+  font-size: 0.75rem;
+  margin-top: 2px;
+}
+
+.chip {
+  border-radius: 999px;
+  padding: 4px 10px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.chip.ev-pos {
+  background: rgba(74, 222, 128, 0.14);
+  color: var(--edge-positive);
+}
+
+.chip.ev-neutral {
+  background: rgba(251, 191, 36, 0.14);
+  color: var(--edge-neutral);
+}
+
+.chip.ev-caution {
+  background: rgba(248, 113, 113, 0.12);
+  color: var(--edge-caution);
+}
+
+.line-row {
+  display: flex;
+  justify-content: space-between;
+  margin-top: 10px;
+  font-size: 0.9rem;
+}
+
+.line-row .model {
+  color: var(--accent);
+  font-weight: 600;
+}
+
+.prob-row {
+  display: flex;
+  gap: 12px;
+  margin-top: 6px;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+}
+
+.milestone-flag {
+  margin-top: 8px;
+  font-size: 0.75rem;
+  color: var(--edge-neutral);
+  font-weight: 600;
+}
+
+/* --- expandable trays (no JS needed) --- */
+details.tray {
+  margin-top: 10px;
+  border-top: 1px solid var(--border);
+  padding-top: 8px;
+}
+
+details.tray summary {
+  cursor: pointer;
+  color: var(--text-muted);
+  font-size: 0.78rem;
+  list-style: none;
+}
+
+details.tray summary::before {
+  content: "▸ ";
+}
+
+details.tray[open] summary::before {
+  content: "▾ ";
+}
+
+.fact-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 6px 12px;
+  margin-top: 8px;
+  font-size: 0.78rem;
+  color: var(--text-muted);
+}
+
+.fact-grid b {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* --- milestone ladder --- */
+.ladder {
+  margin-top: 8px;
+  background: var(--bg-tray);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px;
+  font-size: 0.78rem;
+}
+
+.ladder-rung {
+  display: flex;
+  justify-content: space-between;
+  padding: 4px 0;
+  border-bottom: 1px dashed var(--border);
+}
+
+.ladder-rung:last-child {
+  border-bottom: none;
+}
+
+.ladder-k {
+  font-weight: 650;
+}
+
+.ladder-fair {
+  color: var(--accent);
+}
+
+.ladder-target {
+  color: var(--edge-positive);
+}
+
+.empty-state {
+  text-align: center;
+  color: var(--text-muted);
+  padding: 48px 16px;
+  font-size: 0.9rem;
+}
+
+.slate-footer {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.7rem;
+  padding: 16px;
+}

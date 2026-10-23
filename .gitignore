@@ -1,0 +1,23 @@
+# Virtual environment
+.venv/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+
+# Local database journal (the db itself IS committed: it is the feature store)
+data/*.db-journal
+docs/daily_slate.json
+
+# Secrets / local env
+.env
+*.local
+
+# OS / editor
+.DS_Store
+.idea/
+.vscode/
