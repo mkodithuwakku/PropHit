@@ -270,40 +270,63 @@ Evaluation protocol:
 ```
 Prophit/
 ├── .devin/
+│   ├── config.json                    # Devin project permissions & tool config
 │   ├── agents/
 │   │   ├── coding_agent.md
 │   │   └── doc_prompt_agent.md
 │   └── skills/
-├── AGENTS.md                          # Universal Agent Instructions & Rules
+│       ├── verify/SKILL.md            # Full offline verification skill
+│       └── daily-refresh/SKILL.md     # Morning refresh & UI sync skill
+├── .github/
+│   └── workflows/
+│       ├── daily_refresh.yml          # 12:30 UTC daily ingestion & slate build
+│       └── deploy_pages.yml           # GitHub Pages artifact deployment
+├── AGENTS.md                          # Universal Agent Instructions & Codebase Map
+├── CLAUDE.md                          # Claude Code pointer to AGENTS.md
+├── PROPHIT_SPECIFICATION.md           # Software Requirements Document (SRD)
 ├── README.md                          # Living Portfolio & System Documentation
+├── pytest.ini                         # Pytest config (--disable-socket -q)
 ├── requirements.txt                   # Production dependencies
 ├── requirements-dev.txt               # Testing & linting tools
-├── config.yaml                        # Thresholds (+EV min, odds limits, API keys)
+├── config.yaml                        # Thresholds (+EV min, odds limits, feeds)
+├── scripts/
+│   └── daily_morning_run.py           # CLI wrapper for src.publication.daily_refresh
 ├── data/
-│   └── prophit.db                     # Local SQLite database
+│   └── prophit.db                     # Local SQLite database (committed feature store)
 ├── src/
 │   ├── __init__.py
 │   ├── ingestion/
+│   │   ├── db.py                      # SQLite schema, upserts, ID promotion, settings
 │   │   ├── nba_stats.py               # nba_api wrappers with rate-limiting
-│   │   ├── consensus_odds.py          # PrizePicks + Underdog public lines client
+│   │   ├── consensus_odds.py          # statpick.ai -> PrizePicks -> Underdog chain
 │   │   └── injuries.py                # NBA injury report parser
 │   ├── features/
-│   │   ├── feature_store.py           # Feature transformations & EWMA
+│   │   ├── feature_store.py           # Rolling L3/L7/L20, EWMA, DvP, context
 │   │   └── vacated_usage.py           # Teammate absence redistribution
 │   ├── models/
-│   │   ├── minutes_model.py           # Stage 1: LightGBM minutes predictor
-│   │   ├── stat_models.py             # Stage 2: PTS, REB, AST, 3PM models
-│   │   └── distribution.py            # Stage 3: NegBinomial & Monte Carlo engine
+│   │   ├── minutes_model.py           # Stage 1: LightGBM Huber minutes predictor
+│   │   ├── stat_models.py             # Stage 2: PTS, REB, AST, 3PM rate models
+│   │   └── distribution.py            # Stage 3: NegBinomial & Monte Carlo PMF engine
 │   ├── decision/
-│   │   ├── ev_calculator.py           # Expected value & probability margins
+│   │   ├── ev_calculator.py           # Push-aware expected value & fair odds
 │   │   └── milestone_engine.py        # Ladder & alt-line fair odds pricing
+│   ├── evaluation/
+│   │   ├── backtest.py                # Trailing-mean proxy historical backtester
+│   │   ├── calibrate.py               # Bi-weekly self-calibration loop
+│   │   └── record.py                  # Settled play grading & model record summary
 │   └── publication/
-│       ├── static_builder.py          # Generates daily_slate.json & web bundle
-│       └── publisher.py               # Git commit & push to GitHub Pages
+│       ├── static_builder.py          # SlateGenerator & StaticSiteBuilder
+│       ├── daily_refresh.py           # End-to-end daily refresh CLI runner
+│       └── publisher.py               # Git worktree publisher for gh-pages
 ├── web/
-│   ├── index.html                     # Responsive mobile-first dashboard
-│   ├── styles.css                     # Dark-mode charcoal/plum design system
-│   └── app.js                         # Dynamic filtering, sorting, milestone view
+│   ├── index.html                     # Source mobile-first dashboard HTML
+│   ├── styles.css                     # Source charcoal/plum design system CSS
+│   └── app.js                         # Source Browse, Best Picks & Games UI logic
+├── site/
+│   ├── daily_slate.json               # Published daily slate artifact
+│   ├── index.html                     # Built dashboard HTML deployed to Pages
+│   ├── styles.css                     # Built CSS deployed to Pages
+│   └── app.js                         # Built JS deployed to Pages
 ├── docs/
 │   ├── ARCHITECTURE.md
 │   ├── MODEL_SPEC.md
@@ -312,11 +335,17 @@ Prophit/
 │       ├── RUNBOOK_MODEL_RETRAINING.md
 │       └── RUNBOOK_BACKTEST_EVALUATION.md
 └── tests/
+    ├── conftest.py
+    ├── fixtures/
     ├── test_ingestion.py
     ├── test_features.py
     ├── test_models.py
     ├── test_milestones.py
-    └── test_static_builder.py
+    ├── test_static_builder.py
+    ├── test_evaluation.py
+    ├── test_backtest.py
+    ├── test_calibration.py
+    └── test_dashboard.cjs
 ```
 
 ---
