@@ -145,12 +145,24 @@ function chipText(play) {
   if (play.market_suppressed) return "MKT OFF";
   const side = sideText(play);
   const ev = bestEv(play);
-  return side ? `${side} ${fmtSigned(ev)}%` : `${fmtSigned(ev)}% EV`;
+  return side ? `${side} · ${fmtSigned(ev)}% EV` : `${fmtSigned(ev)}% EV`;
 }
 
 function probNums(play) {
-  const pOver = Math.max(0, Math.min(100, (play.p_over || 0) * 100));
-  return { pOver, pUnder: 100 - pOver };
+  const pct = (p) => Math.max(0, Math.min(100, p * 100));
+  const pOver = pct(play.p_over ?? 0);
+  const pUnder = pct(
+    play.p_under ?? 1 - (play.p_over ?? 0) - (play.p_push ?? 0),
+  );
+  return { pOver, pUnder, pPush: Math.max(0, 100 - pOver - pUnder) };
+}
+
+// EV can favor the less likely side at a sufficiently generous price.
+// Keep every recommendation label, bar and sort tied to that side's chance.
+function displayedOutcome(play) {
+  const { pOver, pUnder } = probNums(play);
+  const side = play.recommended_side || (pUnder > pOver ? "under" : "over");
+  return { side, probability: side === "under" ? pUnder : pOver };
 }
 
 function factGrid(play) {
@@ -191,11 +203,11 @@ function ladderHtml(m) {
   </div>`;
 }
 
-// Compact grid card — two per row in Browse.
+// Full-width Browse cards on phones; two columns when there is room.
 function cardHtml(play, { featured = false } = {}) {
-  const { pOver, pUnder } = probNums(play);
-  const underFavored = pUnder > pOver;
-  const favoredPct = Math.max(pOver, pUnder);
+  const { pOver, pUnder, pPush } = probNums(play);
+  const { side, probability } = displayedOutcome(play);
+  const isUnder = side === "under";
   const edge = play.model_edge ?? 0;
   const m = play.milestone || {};
   const loc = play.is_home ? "vs" : "@";
@@ -213,20 +225,24 @@ function cardHtml(play, { featured = false } = {}) {
         <div class="player-name">${play.player_name}</div>
         <div class="player-meta">${logoImg(play.team_abbr)}<span>${play.team_abbr || ""} ${loc}</span>${logoImg(play.opponent_abbr)}<span>${play.opponent_abbr || ""}</span></div>
       </div>
+    </div>
+    <div class="card-recommendation">
+      <span>${play.recommended_side ? "Pick" : "Market"}</span>
       <span class="chip ${play.market_suppressed ? "ev-caution" : evChipClass(bestEv(play))}">${chipText(play)}</span>
     </div>
     <div class="stat-row">
       <span class="stat-badge ${play.stat}">${STAT_LABELS[play.stat] || play.stat}</span>
-      <div class="line-model"><b>${play.line}</b>→<b>${play.model_mean}</b>
+      <div class="line-model"><span>Line <b>${play.line}</b></span><span>Projection <b>${play.model_mean}</b></span>
         <span class="edge-arrow ${edge >= 0 ? "up" : "down"}">${edge >= 0 ? "▲" : "▼"}${fmtSigned(edge)}</span>
       </div>
       ${m.triggered ? '<span class="ms-badge">▲ ALT</span>' : ""}
     </div>
-    <div class="prob-bar"><div class="prob-fill${underFavored ? " under" : ""}"
-      style="width:${favoredPct}%"></div></div>
+    <div class="prob-bar"><div class="prob-fill${isUnder ? " under" : ""}"
+      style="width:${probability}%"></div></div>
     <div class="prob-labels">
-      <span class="${underFavored ? "" : "favored"}">O ${pOver.toFixed(1)}%</span>
-      <span class="${underFavored ? "favored" : ""}">U ${pUnder.toFixed(1)}%</span>
+      <span class="${isUnder ? "" : "favored"}">Over ${pOver.toFixed(1)}%</span>
+      ${pPush >= 0.05 ? `<span>Push ${pPush.toFixed(1)}%</span>` : ""}
+      <span class="${isUnder ? "favored" : ""}">Under ${pUnder.toFixed(1)}%</span>
     </div>
     <details class="tray"><summary>Factors${m.triggered ? " + Ladder" : ""}</summary>
       <div class="fact-grid">${factGrid(play)}</div>
@@ -237,12 +253,9 @@ function cardHtml(play, { featured = false } = {}) {
 
 // Ultra-compact tile — three per row in Best Picks.
 function miniHtml(play) {
-  const { pOver, pUnder } = probNums(play);
-  const underFavored = pUnder > pOver;
-  const favoredPct = Math.max(pOver, pUnder);
+  const { side, probability } = displayedOutcome(play);
   const ev = bestEv(play);
   const evCls = play.market_suppressed ? "neg" : ev >= 5 ? "pos" : ev >= 0 ? "neu" : "neg";
-  const side = play.recommended_side || (underFavored ? "under" : "over");
 
   return `<article class="mini-card" style="--team:${teamColor(play.team_abbr)}">
     <div class="mc-top">
@@ -256,9 +269,9 @@ function miniHtml(play) {
     <div class="mc-name">${play.player_name}</div>
     <div class="mc-meta">${play.team_abbr || ""}${play.is_home ? " vs" : " @"} ${play.opponent_abbr || ""} · <b class="mc-stat">${STAT_LABELS[play.stat] || play.stat}</b></div>
     <div class="mc-line">${play.line} → <b>${play.model_mean}</b></div>
-    <div class="prob-bar"><div class="prob-fill${underFavored ? " under" : ""}"
-      style="width:${favoredPct}%"></div></div>
-    <div class="mc-fav">${side === "over" ? "Over" : "Under"} ${favoredPct.toFixed(0)}%</div>
+    <div class="prob-bar"><div class="prob-fill${side === "under" ? " under" : ""}"
+      style="width:${probability}%"></div></div>
+    <div class="mc-fav">${side === "over" ? "Over" : "Under"} ${probability.toFixed(0)}%</div>
     ${play.milestone && play.milestone.triggered ? '<div class="mc-flag">▲ MILESTONE</div>' : ""}
   </article>`;
 }
@@ -268,8 +281,7 @@ function miniHtml(play) {
 const SORTERS = {
   ev: (a, b) => (bestEv(b) ?? -999) - (bestEv(a) ?? -999),
   prob: (a, b) =>
-    Math.max(b.p_over || 0, b.p_under || 0) -
-    Math.max(a.p_over || 0, a.p_under || 0),
+    displayedOutcome(b).probability - displayedOutcome(a).probability,
   edge: (a, b) => Math.abs(b.model_edge || 0) - Math.abs(a.model_edge || 0),
   name: (a, b) => (a.player_name || "").localeCompare(b.player_name || ""),
 };
@@ -345,7 +357,7 @@ function renderPlays() {
   if (state.view === "digest") {
     playsEl.classList.add("cols3");
     const rec = basePlays()
-      .filter((p) => p.recommended_side)
+      .filter((p) => p.recommended_side && Number(p.line) !== 0.5)
       .sort(
         state.dsort === "prob"
           ? SORTERS.prob
@@ -353,7 +365,7 @@ function renderPlays() {
       );
     playsEl.innerHTML = rec.length
       ? rec.map(miniHtml).join("")
-      : '<div class="empty-state">No recommended plays on this slate.</div>';
+      : '<div class="empty-state">No eligible Best Picks on this slate. Browse includes 0.5 lines.</div>';
     loadMore.hidden = true;
     return;
   }
@@ -399,6 +411,7 @@ function renderPlays() {
 function syncChrome() {
   document.getElementById("browse-controls").hidden = state.view !== "browse";
   document.getElementById("digest-sort").hidden = state.view !== "digest";
+  document.getElementById("digest-note").hidden = state.view !== "digest";
   document.getElementById("game-picker-label").textContent = state.game
     ? state.game.replace("@", " @ ")
     : "All games";

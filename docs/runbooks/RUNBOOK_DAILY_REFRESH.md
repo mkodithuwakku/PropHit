@@ -30,3 +30,19 @@ Matchup verification:
   previously appeared because `.demo-badge` overrode the hidden attribute.
 - Verify Games, selection/clear in Browse, and Best Picks in a real browser.
   The JSON alone cannot establish that the page displays correctly.
+- Best Picks excludes every 0.5 line; Browse retains them. Check both EV and
+  probability sorting, including a slate with no eligible Best Picks.
+- Confirm each recommendation's side, EV, displayed win probability, and bar
+  agree with that side in the JSON. A positive-EV over may have a lower win
+  probability than the under; never substitute the larger probability.
+  Under probabilities come from `p_under`, so integer-line pushes are not
+  counted as under wins.
+- At 390px, Browse should have one card per row, fully visible player names
+  and matchups, and labeled line/projection values. At 700px and wider, it
+  uses two columns. Check Factors and milestone ladders still expand.
+
+For web-only changes, synchronize `web/index.html`, `web/styles.css`, and
+`web/app.js` into `site/` without regenerating the slate or its timestamp.
+Pages deploys the `site/` bundle; the daily builder copies these same assets
+from `web/` on subsequent refreshes. Bump the asset query versions in
+`web/index.html` when changing the UI so cached clients load the new bundle.

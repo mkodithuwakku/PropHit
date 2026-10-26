@@ -200,6 +200,13 @@ body {
   color: var(--text-muted);
 }
 
+.digest-note {
+  margin-top: 8px;
+  font-size: 0.72rem;
+  line-height: 1.4;
+  color: var(--text-muted);
+}
+
 .search-wrap {
   position: relative;
   margin-bottom: 10px;
@@ -410,14 +417,24 @@ body {
 .plays {
   padding: 10px 12px 20px;
   display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 8px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 12px;
   align-items: start;
 }
 
 .plays.cols3 {
   grid-template-columns: 1fr 1fr 1fr;
   gap: 7px;
+}
+
+@media (min-width: 700px) {
+  .app {
+    max-width: 900px;
+  }
+
+  .plays.cols2 {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
 }
 
 .game-card,
@@ -436,11 +453,12 @@ body {
   border: 1px solid var(--border);
   border-left: 3px solid var(--team);
   border-radius: 12px;
-  padding: 9px 10px;
+  padding: 14px;
   overflow: hidden;
 }
 
 .play-card.featured {
+  padding-top: 24px;
   border-color: rgba(74, 222, 128, 0.5);
   border-left-color: var(--edge-positive);
   box-shadow:
@@ -464,13 +482,28 @@ body {
 .card-top {
   display: flex;
   align-items: center;
-  gap: 7px;
+  gap: 10px;
+}
+
+.card-recommendation {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  margin-top: 12px;
+  color: var(--text-muted);
+  font-size: 0.75rem;
+}
+
+.card-recommendation .chip {
+  font-size: 0.78rem;
+  padding: 5px 10px;
 }
 
 .avatar {
   position: relative;
-  width: 36px;
-  height: 36px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   flex-shrink: 0;
   background: linear-gradient(160deg, #2b2938, #1b1924);
@@ -514,11 +547,10 @@ body {
 
 .player-name {
   font-weight: 700;
-  font-size: 0.82rem;
+  font-size: 1rem;
   letter-spacing: 0.01em;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+  line-height: 1.3;
 }
 
 .player-meta {
@@ -526,10 +558,9 @@ body {
   align-items: center;
   gap: 4px;
   color: var(--text-muted);
-  font-size: 0.66rem;
+  font-size: 0.76rem;
   margin-top: 2px;
-  white-space: nowrap;
-  overflow: hidden;
+  flex-wrap: wrap;
 }
 
 .player-meta img {
@@ -566,15 +597,16 @@ body {
 /* --- stat line --- */
 .stat-row {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 7px;
-  margin-top: 7px;
+  margin-top: 12px;
 }
 
 .stat-badge {
   border-radius: 6px;
   padding: 2px 6px;
-  font-size: 0.62rem;
+  font-size: 0.72rem;
   font-weight: 800;
   letter-spacing: 0.08em;
 }
@@ -591,13 +623,17 @@ body {
 .stat-badge.tov { background: rgba(154, 150, 168, 0.16); color: #b6b2c2; }
 
 .line-model {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
   font-size: 0.8rem;
   color: var(--text-muted);
 }
 
 .line-model b {
   color: var(--accent-bright);
-  font-size: 0.86rem;
+  font-size: 0.95rem;
 }
 
 .edge-arrow {
@@ -634,7 +670,7 @@ body {
   display: flex;
   justify-content: space-between;
   margin-top: 3px;
-  font-size: 0.62rem;
+  font-size: 0.75rem;
   color: var(--text-muted);
 }
 
@@ -651,7 +687,7 @@ details.tray {
 details.tray summary {
   cursor: pointer;
   color: var(--text-muted);
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   font-weight: 600;
   list-style: none;
 }
