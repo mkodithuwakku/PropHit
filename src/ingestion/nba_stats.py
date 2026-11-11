@@ -13,6 +13,7 @@ import re
 import time
 from typing import Any, Callable, Optional
 
+from src.ingestion.consensus_odds import _RetryingClient
 from src.ingestion.db import ProphitDB
 
 EndpointCaller = Callable[[str, dict], dict]
@@ -95,6 +96,31 @@ def parse_game_date(value: Optional[str]) -> Optional[str]:
     return text
 
 
+def nba_date_param(iso_date: Optional[str]) -> Optional[str]:
+    """'2025-10-22' -> '10/22/2025' for nba_api's ``date_from_nullable``."""
+    if not iso_date:
+        return None
+    year, month, day = str(iso_date)[:10].split("-")
+    return f"{month}/{day}/{year}"
+
+
+def _season_label(iso_date: str) -> str:
+    """'2025-10-23' -> '2025-26' (NBA season runs Oct-Jun)."""
+    year, month = int(iso_date[:4]), int(iso_date[5:7])
+    start = year if month >= 7 else year - 1
+    return f"{start}-{str(start + 1)[-2:]}"
+
+
+def _split_made_attempted(value: Any) -> tuple[Optional[int], Optional[int]]:
+    """ESPN 'M-A' strings: '11-18' -> (11, 18); '--' -> (None, None)."""
+    if value is None:
+        return None, None
+    match = re.fullmatch(r"(\d+)\s*-\s*(\d+)", str(value).strip())
+    if match:
+        return int(match.group(1)), int(match.group(2))
+    return _to_int(value), None
+
+
 class NBAStatsClient:
     """Rate-limited, retrying wrapper around nba_api endpoints."""
 
@@ -167,6 +193,161 @@ class NBAStatsClient:
         return data.get("LeagueDashPtTeamDefend", [])
 
 
+ESPN_NBA_BASE_URL = "https://site.api.espn.com/apis/site/v2/sports/basketball/nba"
+
+
+class ESPNBoxScoreClient(_RetryingClient):
+    """Zero-auth fallback for completed-game box scores via ESPN's public
+    JSON endpoints — no key, no headers, safe when stats.nba.com throttles.
+
+    Rows are normalized into the exact dict shape accepted by
+    ``PlayerGameLogIngestion.ingest_rows()``. ESPN's own numeric team /
+    athlete ids are intentionally dropped: ``TEAM_ABBREVIATION`` +
+    ``PLAYER_NAME`` resolve through the same ``team_id_for_abbr`` /
+    ``get_or_create_player_id`` path used by the odds feeds, so ESPN ids
+    never pollute the dim tables.
+    """
+
+    def __init__(self, **kwargs: Any):
+        super().__init__(ESPN_NBA_BASE_URL, **kwargs)
+
+    def get_scoreboard(self, date_yyyymmdd: str) -> dict:
+        return self._get_json("/scoreboard", params={"dates": date_yyyymmdd})
+
+    def get_summary(self, event_id: str) -> dict:
+        return self._get_json("/summary", params={"event": event_id})
+
+    def fetch_missing_dates(self, dates: list) -> list[dict]:
+        """Normalized game-log rows for each ISO 'YYYY-MM-DD' date given."""
+        rows: list[dict] = []
+        for iso_date in dates:
+            for event in self._completed_events(str(iso_date)[:10]):
+                rows.extend(self._event_rows(event, str(iso_date)[:10]))
+        return rows
+
+    def _completed_events(self, iso_date: str) -> list:
+        payload = self.get_scoreboard(iso_date.replace("-", ""))
+        events = []
+        for event in payload.get("events") or []:
+            status = (event.get("status") or {}).get("type") or {}
+            if status.get("completed") or status.get("state") == "post":
+                events.append(event)
+        return events
+
+    def _event_rows(self, event: dict, game_date: str) -> list:
+        event_id = str(event.get("id") or "")
+        competitions = event.get("competitions") or []
+        competitors = (competitions[0] if competitions else {}).get("competitors") or []
+        sides = {c.get("homeAway"): c for c in competitors}
+        home, away = sides.get("home"), sides.get("away")
+        if not event_id or not home or not away:
+            return []
+        home_abbr = (home.get("team") or {}).get("abbreviation")
+        away_abbr = (away.get("team") or {}).get("abbreviation")
+        if not home_abbr or not away_abbr:
+            return []
+        winners = self._winning_abbrs(competitors)
+
+        rows = []
+        summary = self.get_summary(event_id)
+        team_blocks = (summary.get("boxscore") or {}).get("players") or []
+        for block in team_blocks:
+            team_abbr = (block.get("team") or {}).get("abbreviation")
+            # parse_matchup reads "AWY @ HOME" -> away player, or
+            # "HOME vs. AWY" -> home player. Format per team block so
+            # home players get is_home=1 and the right opponent_team_id.
+            team_matchup = (
+                f"{home_abbr} vs. {away_abbr}"
+                if team_abbr == home_abbr
+                else f"{away_abbr} @ {home_abbr}"
+            )
+            for group in block.get("statistics") or []:
+                keys = group.get("keys") or []
+                for entry in group.get("athletes") or []:
+                    row = self._athlete_row(
+                        entry,
+                        keys,
+                        team_abbr,
+                        event_id,
+                        game_date,
+                        team_matchup,
+                        winners,
+                    )
+                    if row:
+                        rows.append(row)
+        return rows
+
+    @staticmethod
+    def _winning_abbrs(competitors: list) -> set:
+        winners = {
+            (c.get("team") or {}).get("abbreviation")
+            for c in competitors
+            if c.get("winner")
+        }
+        winners.discard(None)
+        if not winners:
+            scores = {}
+            for c in competitors:
+                abbr = (c.get("team") or {}).get("abbreviation")
+                try:
+                    scores[abbr] = float(c.get("score") or 0)
+                except (TypeError, ValueError):
+                    continue
+            if scores:
+                top = max(scores.values())
+                winners = {a for a, s in scores.items() if s == top}
+        return winners
+
+    @staticmethod
+    def _athlete_row(
+        entry: dict,
+        keys: list,
+        team_abbr: Optional[str],
+        event_id: str,
+        game_date: str,
+        matchup: str,
+        winners: set,
+    ) -> Optional[dict]:
+        if entry.get("didNotPlay") or not team_abbr:
+            return None
+        name = (entry.get("athlete") or {}).get("displayName")
+        stats = {str(k).lower(): v for k, v in zip(keys, entry.get("stats") or [])}
+        minutes = stats.get("min")
+        if not name or minutes in (None, "", "--"):
+            return None
+        fgm, fga = _split_made_attempted(stats.get("fg"))
+        fg3m, fg3a = _split_made_attempted(stats.get("3pt"))
+        ftm, fta = _split_made_attempted(stats.get("ft"))
+        return {
+            "Game_ID": f"espn-{event_id}",
+            "GAME_DATE": game_date,
+            "PLAYER_NAME": name,
+            "TEAM_ABBREVIATION": team_abbr,
+            "MATCHUP": matchup,
+            "WL": "W" if team_abbr in winners else ("L" if winners else None),
+            "MIN": minutes,
+            "PTS": _to_int(stats.get("pts")),
+            "FGM": fgm,
+            "FGA": fga,
+            "FG_PCT": (fgm / fga) if fgm is not None and fga else None,
+            "FG3M": fg3m,
+            "FG3A": fg3a,
+            "FG3_PCT": (fg3m / fg3a) if fg3m is not None and fg3a else None,
+            "FTM": ftm,
+            "FTA": fta,
+            "FT_PCT": (ftm / fta) if ftm is not None and fta else None,
+            "OREB": _to_int(stats.get("oreb")),
+            "DREB": _to_int(stats.get("dreb")),
+            "REB": _to_int(stats.get("reb")),
+            "AST": _to_int(stats.get("ast")),
+            "STL": _to_int(stats.get("stl")),
+            "BLK": _to_int(stats.get("blk")),
+            "TOV": _to_int(stats.get("to") or stats.get("tov")),
+            "PF": _to_int(stats.get("pf")),
+            "PLUS_MINUS": _to_float(stats.get("+/-")),
+        }
+
+
 class PlayerGameLogIngestion:
     """Parses normalized game-log rows and persists them to SQLite."""
 
@@ -196,6 +377,27 @@ class PlayerGameLogIngestion:
             written += 1
         self.db.log_ingestion("nba_stats.player_game_log", written)
         return written
+
+    def latest_game_date(self, season_prefix: Optional[str] = None) -> Optional[str]:
+        """Incremental watermark: most recent stored game_date (ISO).
+
+        ``season_prefix`` accepts either an ISO lower bound ('2025-10-01')
+        or a season label ('2025-26' -> games on/after Aug 1 of the start
+        year). Pass the result through ``nba_date_param`` to produce the
+        ``MM/DD/YYYY`` string nba_api's ``date_from_nullable`` expects.
+        """
+        sql = "SELECT MAX(game_date) AS d FROM fact_player_games"
+        params: tuple = ()
+        if season_prefix:
+            bound = (
+                f"{season_prefix[:4]}-08-01"
+                if re.fullmatch(r"\d{4}-\d{2}$", season_prefix)
+                else str(season_prefix)[:10]
+            )
+            sql += " WHERE game_date >= ?"
+            params = (bound,)
+        row = self.db.query_one(sql, params)
+        return row["d"] if row and row["d"] else None
 
     def _parse_row(
         self, raw: dict, default_player_name: Optional[str]
@@ -291,3 +493,195 @@ class TeamDefenseIngestion:
             written += 1
         self.db.log_ingestion("nba_stats.team_defense", written)
         return written
+
+    # --- local DvP derivation (zero API calls) ------------------------------
+
+    _ALLOWED_SUMS = (
+        "SUM(COALESCE(g.pts,0)) pts, SUM(COALESCE(g.reb,0)) reb, "
+        "SUM(COALESCE(g.ast,0)) ast, SUM(COALESCE(g.fg3m,0)) fg3m, "
+        "SUM(COALESCE(g.fgm,0)) fgm, SUM(COALESCE(g.fga,0)) fga, "
+        "SUM(COALESCE(g.fg3a,0)) fg3a, SUM(COALESCE(g.fta,0)) fta, "
+        "SUM(COALESCE(g.oreb,0)) oreb, SUM(COALESCE(g.tov,0)) tov"
+    )
+
+    def _allowed_rows(
+        self,
+        snapshot_date: str,
+        season_start: Optional[str],
+        group_by_position: bool = False,
+    ) -> list:
+        """Per-(defense, game_id) totals allowed, strictly on/before the
+        snapshot date. ``group_by_position`` splits by dim_players.position
+        for position-scoped DvP."""
+        params: list = [str(snapshot_date)[:10]]
+        bound_sql = ""
+        if season_start:
+            bound_sql = " AND g.game_date >= ?"
+            params.append(str(season_start)[:10])
+        if group_by_position:
+            return self.db.query(
+                f"SELECT g.opponent_team_id AS team_id, p.position AS position,"
+                f" g.game_id, {self._ALLOWED_SUMS}"
+                " FROM fact_player_games g"
+                " JOIN dim_players p ON p.player_id = g.player_id"
+                " WHERE g.opponent_team_id IS NOT NULL"
+                " AND p.position IS NOT NULL AND p.position != ''"
+                " AND g.game_date <= ?"
+                f"{bound_sql}"
+                " GROUP BY g.opponent_team_id, p.position, g.game_id",
+                tuple(params),
+            )
+        return self.db.query(
+            f"SELECT opponent_team_id AS team_id, game_id, {self._ALLOWED_SUMS}"
+            " FROM fact_player_games g"
+            " WHERE opponent_team_id IS NOT NULL AND game_date <= ?"
+            f"{bound_sql}"
+            " GROUP BY opponent_team_id, game_id",
+            tuple(params),
+        )
+
+    @staticmethod
+    def _scopes_for_position(position: Optional[str]) -> set:
+        """'PG' -> {'PG','G'}; 'G-F' -> {'G','F'}; 'Center' -> {'C'}."""
+        text = str(position or "").upper().strip()
+        exact = {"PG", "SG", "SF", "PF", "C"}
+        scopes = {text} & exact
+        if "G" in text or "GUARD" in text:
+            scopes.add("G")
+        if "F" in text or "FORWARD" in text:
+            scopes.add("F")
+        if "C" in text or "CENTER" in text:
+            scopes.add("C")
+        return scopes
+
+    @staticmethod
+    def _defense_metrics(totals: dict) -> dict:
+        games = totals["games"]
+        poss = totals["fga"] + 0.44 * totals["fta"] - totals["oreb"] + totals["tov"]
+        twos_m = totals["fgm"] - totals["fg3m"]
+        twos_a = totals["fga"] - totals["fg3a"]
+        return {
+            "opp_pts": totals["pts"] / games,
+            "opp_reb": totals["reb"] / games,
+            "opp_ast": totals["ast"] / games,
+            "opp_fg3m": totals["fg3m"] / games,
+            "paint_pts_allowed": 2.0 * twos_m / games,
+            "perimeter_fg3_pct": (
+                totals["fg3m"] / totals["fg3a"] if totals["fg3a"] else None
+            ),
+            "rim_fg_pct_allowed": (twos_m / twos_a) if twos_a else None,
+            "def_rating": (100.0 * totals["pts"] / poss) if poss > 0 else None,
+        }
+
+    @staticmethod
+    def _rank_defense(metrics_by_team: dict) -> None:
+        """Rank 1 = best (lowest allowed) within each metric, in place."""
+        for key, rank_key in (
+            ("def_rating", "def_rating_rank"),
+            ("paint_pts_allowed", "paint_pts_rank"),
+            ("perimeter_fg3_pct", "perimeter_fg3_rank"),
+            ("rim_fg_pct_allowed", "rim_fg_pct_rank"),
+        ):
+            for team_id, metrics in metrics_by_team.items():
+                value = metrics.get(key)
+                if value is None:
+                    metrics[rank_key] = None
+                    continue
+                metrics[rank_key] = 1 + sum(
+                    1
+                    for other_id, other in metrics_by_team.items()
+                    if other_id != team_id
+                    and other.get(key) is not None
+                    and other[key] < value
+                )
+
+    def derive_from_games(
+        self, snapshot_date: str, season_start: Optional[str] = None
+    ) -> int:
+        """Derive overall + position-scoped DvP rows from fact_player_games.
+
+        Zero API calls — fully replaces LeagueDashPtTeamDefend during daily
+        refreshes. Uses games strictly on/before ``snapshot_date`` (and
+        ``>= season_start`` when given, falling back to all available games
+        when the current season has fewer than 5 team-games). Returns the
+        number of fact_team_defense_daily rows written.
+        """
+        game_date = str(snapshot_date)[:10]
+        effective_start = season_start
+        rows = self._allowed_rows(game_date, effective_start)
+        if season_start and len({r["game_id"] for r in rows}) < 5:
+            effective_start = None
+            rows = self._allowed_rows(game_date, None)
+
+        totals_by_team: dict = {}
+        for r in rows:
+            t = totals_by_team.setdefault(
+                r["team_id"], {"games": 0, **{k: 0.0 for k in _DEFENSE_STATS}}
+            )
+            t["games"] += 1
+            for k in _DEFENSE_STATS:
+                t[k] += r[k] or 0.0
+
+        written = 0
+        season_id = _season_label(game_date)
+        metrics_all = {
+            tid: self._defense_metrics(t) for tid, t in totals_by_team.items()
+        }
+        self._rank_defense(metrics_all)
+        for team_id, metrics in metrics_all.items():
+            self.db.upsert_team_defense(
+                {
+                    "team_id": team_id,
+                    "snapshot_date": game_date,
+                    "season_id": season_id,
+                    "position_scope": "ALL",
+                    **metrics,
+                }
+            )
+            written += 1
+
+        # Position-scoped DvP: split allowed totals by player position.
+        scope_totals: dict = {}
+        for r in self._allowed_rows(game_date, effective_start, group_by_position=True):
+            for scope in self._scopes_for_position(r["position"]):
+                key = (r["team_id"], scope)
+                t = scope_totals.setdefault(
+                    key, {"games": 0, **{k: 0.0 for k in _DEFENSE_STATS}}
+                )
+                t["games"] += 1
+                for k in _DEFENSE_STATS:
+                    t[k] += r[k] or 0.0
+
+        by_scope: dict = {}
+        for (team_id, scope), totals in scope_totals.items():
+            by_scope.setdefault(scope, {})[team_id] = self._defense_metrics(totals)
+        for scope, metrics_by_team in by_scope.items():
+            self._rank_defense(metrics_by_team)
+            for team_id, metrics in metrics_by_team.items():
+                self.db.upsert_team_defense(
+                    {
+                        "team_id": team_id,
+                        "snapshot_date": game_date,
+                        "season_id": season_id,
+                        "position_scope": scope,
+                        **metrics,
+                    }
+                )
+                written += 1
+
+        self.db.log_ingestion("nba_stats.team_defense.derived", written)
+        return written
+
+
+_DEFENSE_STATS = (
+    "pts",
+    "reb",
+    "ast",
+    "fg3m",
+    "fgm",
+    "fga",
+    "fg3a",
+    "fta",
+    "oreb",
+    "tov",
+)

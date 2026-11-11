@@ -263,3 +263,138 @@ def test_publisher_dry_run_no_side_effects(tmp_path):
     assert plan["dry_run"] is True
     assert plan["branch"] == "gh-pages"
     assert any("git push" in c for c in plan["commands"])
+
+
+# --- ML-backed slate (Stage 1/2 models + advanced factors) ----------------------
+
+
+def _seed_ml_slate_db(db):
+    """80 games for P_ID -> >=60 pre-slate rows activates ML fitting."""
+    db.upsert_team(P_TEAM, "TST")
+    db.upsert_team(P_OPP, "OPP")
+    db.upsert_player(P_ID, "Board Man", team_id=P_TEAM, position="C")
+    d = date(2025, 6, 1)
+    for i in range(80):
+        db.upsert_player_game(
+            {
+                "game_id": f"ml{i}",
+                "player_id": P_ID,
+                "team_id": P_TEAM,
+                "opponent_team_id": P_OPP,
+                "game_date": d.isoformat(),
+                "minutes": 26.0 + (i % 5),
+                "pts": 14 + (i % 9),
+                "reb": 10 + (i % 6),
+                "ast": 3 + (i % 4),
+                "fg3m": 1 + (i % 3),
+                "fgm": 6,
+                "fga": 10,
+                "fg3a": 4,
+                "ftm": 3,
+                "fta": 4,
+                "oreb": 2,
+                "dreb": 8,
+                "stl": 1,
+                "blk": 1,
+                "tov": 2,
+                "pf": 2,
+                "plus_minus": 3.0,
+                "is_home": 1,
+            }
+        )
+        d += timedelta(days=2)
+    db.insert_consensus_line(
+        {
+            "event_id": "evt_ml",
+            "game_date": GAME_DATE,
+            "home_team_abbr": "TST",
+            "away_team_abbr": "OPP",
+            "player_id": P_ID,
+            "player_name": "Board Man",
+            "market": "player_rebounds",
+            "bookmaker": "CONSENSUS",
+            "line": 9.5,
+            "over_price": -110,
+            "under_price": -110,
+            "is_consensus": 1,
+            "snapshot_time": SNAPSHOT,
+        }
+    )
+    return db
+
+
+def test_ml_backed_slate_factors(db):
+    _seed_ml_slate_db(db)
+    plays = SlateGenerator(db).generate_plays(GAME_DATE)
+    assert len(plays) == 1
+    play = plays[0]
+    f = play["factors"]
+    assert f["ml_active"] is True
+    for key in ("ts_pct", "usg_pct", "pace_factor", "ml_active", "game_score"):
+        assert key in f
+    # existing factor keys unchanged
+    for key in (
+        "projected_minutes",
+        "dvp_rank",
+        "dvp_label",
+        "rest_days",
+        "rest_label",
+        "altitude",
+    ):
+        assert key in f
+    assert play["model_mean"] > 0
+    assert 0.0 <= play["p_over"] <= 1.0
+    # Stage-1 clipped blend keeps minutes in a sane band
+    assert 10.0 <= f["projected_minutes"] <= 48.0
+
+
+def test_small_slate_stays_non_ml(slate_db):
+    """<60 historical rows -> fast path, no ML fitting noise."""
+    f = SlateGenerator(slate_db).generate_plays(GAME_DATE)[0]["factors"]
+    assert f["ml_active"] is False
+    assert f["pace_factor"] == pytest.approx(1.0)
+
+
+def test_vacated_usage_boosts_projected_minutes(slate_db):
+    """An OUT teammate redistributes minutes to the play's player."""
+    from src.ingestion.injuries import InjuryEntry
+
+    slate_db.upsert_player(8002, "Bench Mate", team_id=P_TEAM)
+    slate_db.upsert_player(8003, "Deep Sub", team_id=P_TEAM)
+    d = date(2025, 10, 1)
+    for i in range(12):
+        gdate = (d + timedelta(days=2 * i)).isoformat()
+        slate_db.upsert_player_game(
+            {
+                "game_id": f"bm{i}",
+                "player_id": 8002,
+                "team_id": P_TEAM,
+                "opponent_team_id": P_OPP,
+                "game_date": gdate,
+                "minutes": 20.0,
+                "fga": 8,
+                "tov": 1,
+            }
+        )
+        slate_db.upsert_player_game(
+            {
+                "game_id": f"ds{i}",
+                "player_id": 8003,
+                "team_id": P_TEAM,
+                "opponent_team_id": P_OPP,
+                "game_date": gdate,
+                "minutes": 10.0,
+                "fga": 4,
+                "tov": 1,
+            }
+        )
+
+    base = SlateGenerator(slate_db).generate_plays(GAME_DATE)[0]
+    entries = [InjuryEntry(player_name="Bench Mate", status="out", team_abbr="TST")]
+    boosted = SlateGenerator(slate_db).generate_plays(
+        GAME_DATE, injury_entries=entries
+    )[0]
+    # vacated 20 min * (30/40 remaining share) = +15 -> ~45 projected
+    assert (
+        boosted["factors"]["projected_minutes"] > base["factors"]["projected_minutes"]
+    )

@@ -11,11 +11,19 @@ All features for a target `game_date` are computed strictly from historical rows
 - **Rolling Windows (`L3`, `L7`, `L20`):** Unweighted means over the last 3, 7, and 20 games for all box-score stats (`minutes`, `pts`, `reb`, `ast`, `fg3m`, `stl`, `blk`, `tov`, `oreb`, `dreb`, `fga`, `fta`, `pf`, `plus_minus`).
 - **EWMA (`{stat}_ewma`):** Exponentially weighted moving average with half-life $h = 3.0$ games (`values[0]` is most recent):
   $$w_i = 0.5^{i / 3.0}, \quad \text{EWMA} = \frac{\sum_i w_i x_i}{\sum_i w_i}$$
-- **Per-Minute Rates (`{stat}_per_min_l20`):** Total stat divided by total minutes over the last 20 games for `pts`, `reb`, `ast`, `fg3m`.
-- **Usage Volume (`usage_volume_l7`):** 7-game mean of possessions used per game:
-  $$\text{Usage Volume} = \text{FGA} + 0.44 \times \text{FTA} + \text{TOV}$$
-- **Rest & Schedule Flags:** `days_rest`, `is_b2b` (`days_rest == 0`), `games_last_4d`, `is_3_in_4` (`games_last_4d >= 3`), `altitude_game` (`1` when playing away at `DEN` or `UTA`), and `blowout_index` ($|\text{Spread}| \times \text{Total} / 220$).
-- **DvP Matchup Vulnerability (`matchup_vulnerability`):** Opponent generosity percentile in $[0, 1]$ for `pts`, `reb`, `ast`, `fg3m` (`1.0` = softest defense in the league). Mapped to ordinal rank $1\text{..}30$ via $\text{round}(\text{vuln} \times 29) + 1$.
+- **Per-Minute Rates (`{stat}_per_min_l20`, `{stat}_per_min_ewma`):** Computed over the last 20 games and via EWMA for `pts`, `reb`, `ast`, `fg3m`, `stl`, `blk`, `tov`, `oreb`, `dreb`, `fga`, `fta`, `fg3a`.
+- **Shooting & Scoring Efficiency:**
+  - True Shooting % (`ts_pct_l3`, `ts_pct_l7`, `ts_pct_l20`, `ts_pct_ewma`, neutral fallback `0.55`): $\frac{\text{PTS}}{2(\text{FGA} + 0.44 \cdot \text{FTA})}$, plus `ts_regression_delta = ts_pct_l3 - ts_pct_l20`.
+  - Effective FG% (`efg_pct_l7`, `efg_pct_l20`): $\frac{\text{FGM} + 0.5 \cdot \text{FG3M}}{\text{FGA}}$, Free-Throw Rate (`ftr_l20 = FTA / FGA`), and 3PA Rate (`fg3a_rate_l20 = FG3A / FGA`).
+- **True On-Floor Team Shares & Usage Volume:**
+  - `usage_volume_l3/l7/l20`: $\text{FGA} + 0.44 \times \text{FTA} + \text{TOV}$.
+  - On-floor possession and opportunity shares (`usg_pct_l7/l20/ewma`, `reb_pct_l20`, `oreb_pct_l20`, `dreb_pct_l20`, `ast_pct_l20`, `tov_pct_l20`, `ast_to_tov_l20`) scaled against team game totals (`(game_id, team_id)`), plus `role_expansion_delta` and `minutes_trend_delta`.
+- **Composite Impact & Volatility Metrics:**
+  - Hollinger Game Score (`game_score_l7/l20/ewma`), Player Impact Estimate per minute (`pie_l20`), minutes standard deviation (`minutes_std_l20`), stat coefficient of variation (`{stat}_cv_l20`), foul rate per 36 minutes (`foul_rate_per36_l20`), and `plus_minus_per_min_l20`.
+- **Pace, Schedule & Position-Aware DvP:**
+  - `team_pace` (possessions per game strictly before `game_date`) and `expected_pace_factor` (expected game pace relative to league average, clamped to `[0.92, 1.08]`).
+  - `days_rest`, `is_b2b` (`days_rest == 0`), `games_last_4d`, `is_3_in_4` (`games_last_4d >= 3`), `altitude_game` (`1` when playing away at `DEN` or `UTA`), and `blowout_index` ($|\text{Spread}| \times \text{Total} / 220$).
+  - Position-aware `matchup_vulnerability` in $[0, 1]$ across single and combo stats (`ALL` plus `G`, `F`, `C`, `PG`, `SG`, `SF`, `PF` scopes derived locally from `fact_player_games` with automatic fallback to `ALL`).
 - **Vacated Usage (`src/features/vacated_usage.py`):** When teammates are marked `out`, their 10-game baseline minutes and usage volume are redistributed to active teammates proportional to each active player's share of active team minutes and usage.
 
 ---
@@ -35,12 +43,14 @@ Shared normalized feature vector (`RATE_FEATURES`): `recent_rate`, `recent_ewma`
 - **Three-Pointers Made (`fg3m` -> `ZIPRateModel`):** `statsmodels` `ZeroInflatedPoisson` with $\log(\max(\text{minutes}, 1))$ offset fit via BFGS.
 - **Other Count Markets (`stl`, `blk`, `tov`):** Default to `PoissonRateModel` in `build_stat_model()`.
 
-### 2.3 Morning Slate Inference & Empirical-Bayes Shrinkage (`src/publication/static_builder.py`)
+### 2.3 Morning Slate Inference, ML Blending & Empirical-Bayes Shrinkage (`src/publication/static_builder.py`)
 During daily slate generation (`SlateGenerator.generate_plays`), projections support all 11 single and combo markets (`pts`, `reb`, `ast`, `fg3m`, `pra`, `pr`, `pa`, `ra`, `blk`, `stl`, `tov`):
-1. **Projected Minutes:** First non-null value from `(minutes_ewma, minutes_l7, minutes_l20, minutes_l3)`.
-2. **Raw Mean ($\mu_{\text{raw}}$):** Sum across component stats of $\text{rate}_s \times \text{minutes}$, where $\text{rate}_s$ is `{s}_per_min_l20` (falling back to `{s}_ewma / max(minutes_l7, 1.0)`).
-3. **Empirical-Bayes Shrinkage:** To prevent overreacting on small sample sizes $n = \text{len(history)}$ (up to `history_games = 20`), the raw mean is shrunk toward the bookmaker consensus line $L$ with prior weight $w_0 = 6.0$ (`prior_games`):
+1. **Lazy Per-Slate ML Fitting (`_ensure_ml_models`):** When the database contains at least `MIN_ML_TRAIN_SAMPLES = 60` pre-slate player-game rows, `SlateGenerator` fits `MinutesModel` (with `ADVANCED_MINUTES_FEATURES`) and per-stat Stage 2 models (`build_stat_model` with `include_advanced=True`, capped at `ML_SAMPLE_CAP = 400` recent rows).
+2. **Projected Minutes:** Baseline rolling/EWMA minutes (`min_base`) blended with `MinutesModel.predict(feats)` (clipped to `[0.5 * min_base, 1.45 * min_base]`) at weight `ml_blend_weight` (default `0.55`), plus any vacated minutes from `VacatedUsageEngine`.
+3. **Component Stat Projection & Contextual Multiplier:** For each component stat $s$, baseline `rate * minutes` is blended with Stage 2 `model.predict_count(rate_feats, minutes)` at weight `ml_blend_weight`, then multiplied by the clamped (`[0.85, 1.18]`) contextual multiplier incorporating position-aware DvP (`dvp_weight`), `expected_pace_factor`, `ts_regression_delta`, `role_expansion_delta`, and rest/B2B/altitude adjustments.
+4. **Empirical-Bayes Shrinkage & Blended PMF:** The raw mean is shrunk toward the bookmaker consensus line $L$ with calibrated prior weight $w_0 = \text{prior\_games}$ (default `6.0`):
    $$\hat{\mu} = \frac{n \cdot \mu_{\text{raw}} + w_0 \cdot L}{n + w_0}$$
+   When `len(history) >= 15`, `DistributionEngine.blended_pmf` combines the Negative Binomial PMF and Monte Carlo PMF (`minutes_std_l20`) at calibrated weight `mc_blend_weight` (default `0.25`).
 
 ---
 

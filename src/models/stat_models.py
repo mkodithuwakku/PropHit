@@ -31,6 +31,30 @@ RATE_FEATURES = [
     "days_rest",
 ]
 
+# Populated only by build_rate_samples(include_advanced=True); dropped
+# from the active design matrix when absent so synthetic 6-key samples
+# never create singular all-zero columns.
+ADVANCED_RATE_FEATURES = [
+    "ts_pct_l7",
+    "ts_pct_l20",
+    "ts_regression_delta",
+    "efg_pct_l7",
+    "ftr_l20",
+    "fg3a_rate_l20",
+    "usg_pct_l7",
+    "usg_pct_l20",
+    "reb_pct_l20",
+    "oreb_pct_l20",
+    "dreb_pct_l20",
+    "ast_pct_l20",
+    "tov_pct_l20",
+    "game_score_l7",
+    "role_expansion_delta",
+    "foul_rate_per36_l20",
+    "is_home",
+    "altitude_game",
+]
+
 COUNT_STATS = ("pts", "reb", "ast", "fg3m")
 
 DEFAULT_LGBM_COUNT_PARAMS = {
@@ -48,10 +72,21 @@ def _safe_log_minutes(minutes: np.ndarray) -> np.ndarray:
     return np.log(np.clip(np.asarray(minutes, dtype=float), 1.0, None))
 
 
+def _active_feature_names(feature_dicts: list[dict]) -> list[str]:
+    """RATE_FEATURES plus any advanced key actually present in samples."""
+    return RATE_FEATURES + [
+        k
+        for k in ADVANCED_RATE_FEATURES
+        if any(fd.get(k) is not None for fd in feature_dicts)
+    ]
+
+
 def _design_matrix(
-    feature_dicts: list[dict], extra_minutes: Optional[np.ndarray] = None
+    feature_dicts: list[dict],
+    extra_minutes: Optional[np.ndarray] = None,
+    feature_names: Optional[list[str]] = None,
 ) -> np.ndarray:
-    X = to_matrix(feature_dicts, RATE_FEATURES)
+    X = to_matrix(feature_dicts, feature_names or RATE_FEATURES)
     X = np.where(np.isnan(X), 0.0, X)  # GLMs need finite inputs
     if extra_minutes is not None:
         X = np.column_stack([X, _safe_log_minutes(extra_minutes)])
@@ -68,23 +103,30 @@ class _GLMRateModel:
 
     def __init__(self):
         self._res = None
+        self._feature_names: list[str] = list(RATE_FEATURES)
 
     def _family(self):  # pragma: no cover - overridden
         raise NotImplementedError
 
     def fit(self, samples: list[dict]) -> "_GLMRateModel":
+        import warnings
+
         import statsmodels.api as sm
 
-        X = _design_matrix([s["features"] for s in samples])
+        feature_dicts = [s["features"] for s in samples]
+        self._feature_names = _active_feature_names(feature_dicts)
+        X = _design_matrix(feature_dicts, feature_names=self._feature_names)
         y = np.asarray([s["target"] for s in samples], dtype=float)
         offset = _safe_log_minutes(np.asarray([s["minutes"] for s in samples]))
-        self._res = sm.GLM(y, X, family=self._family(), offset=offset).fit()
+        with warnings.catch_warnings():
+            warnings.simplefilter("ignore")
+            self._res = sm.GLM(y, X, family=self._family(), offset=offset).fit()
         return self
 
     def predict_count(self, features: dict, minutes: float) -> float:
         if self._res is None:
             raise RuntimeError("predict_count called before fit")
-        X = _design_matrix([features])
+        X = _design_matrix([features], feature_names=self._feature_names)
         offset = _safe_log_minutes(np.asarray([minutes]))
         return float(self._res.predict(exog=X, offset=offset)[0])
 
@@ -119,13 +161,16 @@ class ZIPRateModel:
 
     def __init__(self):
         self._res = None
+        self._feature_names: list[str] = list(RATE_FEATURES)
 
     def fit(self, samples: list[dict]) -> "ZIPRateModel":
         import warnings
 
         from statsmodels.discrete.count_model import ZeroInflatedPoisson
 
-        X = _design_matrix([s["features"] for s in samples])
+        feature_dicts = [s["features"] for s in samples]
+        self._feature_names = _active_feature_names(feature_dicts)
+        X = _design_matrix(feature_dicts, feature_names=self._feature_names)
         y = np.asarray([s["target"] for s in samples], dtype=float)
         offset = _safe_log_minutes(np.asarray([s["minutes"] for s in samples]))
         model = ZeroInflatedPoisson(y, X, offset=offset)
@@ -141,7 +186,7 @@ class ZIPRateModel:
     def predict_count(self, features: dict, minutes: float) -> float:
         if self._res is None:
             raise RuntimeError("predict_count called before fit")
-        X = _design_matrix([features])
+        X = _design_matrix([features], feature_names=self._feature_names)
         offset = _safe_log_minutes(np.asarray([minutes]))
         pred = self._res.predict(exog=X, offset=offset)
         return float(np.asarray(pred).ravel()[0])
@@ -156,9 +201,12 @@ class LightGBMRateModel:
     def __init__(self, params: Optional[dict] = None):
         self.params = {**DEFAULT_LGBM_COUNT_PARAMS, **(params or {})}
         self._model = None
+        self._feature_names: list[str] = list(RATE_FEATURES)
 
     def fit(self, samples: list[dict]) -> "LightGBMRateModel":
-        X = to_matrix([s["features"] for s in samples], RATE_FEATURES)
+        feature_dicts = [s["features"] for s in samples]
+        self._feature_names = _active_feature_names(feature_dicts)
+        X = to_matrix(feature_dicts, self._feature_names)
         X = np.column_stack(
             [X, np.asarray([s["minutes"] for s in samples], dtype=float)]
         )
@@ -170,7 +218,7 @@ class LightGBMRateModel:
     def predict_count(self, features: dict, minutes: float) -> float:
         if self._model is None:
             raise RuntimeError("predict_count called before fit")
-        X = to_matrix([features], RATE_FEATURES)
+        X = to_matrix([features], self._feature_names)
         X = np.column_stack([X, np.asarray([minutes], dtype=float)])
         return float(max(self._model.predict(X)[0], 0.0))
 
@@ -195,8 +243,8 @@ def build_stat_model(stat: str, **kwargs):
 # --- dataset assembly --------------------------------------------------------
 
 
-def _rate_features(feats: dict, stat: str) -> dict:
-    return {
+def _rate_features(feats: dict, stat: str, include_advanced: bool = False) -> dict:
+    out = {
         "recent_rate": feats.get(f"{stat}_per_min_l20"),
         "recent_ewma": feats.get(f"{stat}_ewma"),
         "minutes_l7": feats.get("minutes_l7"),
@@ -204,6 +252,10 @@ def _rate_features(feats: dict, stat: str) -> dict:
         "is_b2b": feats.get("is_b2b"),
         "days_rest": feats.get("days_rest"),
     }
+    if include_advanced:
+        for key in ADVANCED_RATE_FEATURES:
+            out[key] = feats.get(key)
+    return out
 
 
 def build_rate_samples(
@@ -211,12 +263,17 @@ def build_rate_samples(
     stat: str,
     player_ids: Optional[list[int]] = None,
     min_prior_games: int = 5,
+    include_advanced: bool = False,
+    store: Optional[FeatureStore] = None,
+    max_games_per_player: Optional[int] = None,
 ) -> list[dict]:
     """Assemble (features -> stat count) rows from fact_player_games.
 
     Each sample's features come only from games strictly before its date.
+    ``include_advanced`` layers the advanced-stat/context keys onto the
+    base six — default False preserves the base contract.
     """
-    store = FeatureStore(db)
+    store = store or FeatureStore(db)
     if player_ids is None:
         player_ids = [
             r["player_id"]
@@ -231,17 +288,31 @@ def build_rate_samples(
             "ORDER BY game_date",
             (pid,),
         )
+        if max_games_per_player:
+            games = games[-max_games_per_player:]
         for game in games:
             feats = store.rolling_features(pid, game["game_date"])
             if feats["games_available"] < min_prior_games:
                 continue
+            if include_advanced:
+                ctx = store.game_context(
+                    game["game_date"],
+                    opponent_team_id=game["opponent_team_id"],
+                    is_home=(
+                        bool(game["is_home"]) if game["is_home"] is not None else None
+                    ),
+                )
+                feats["is_home"] = game["is_home"]
+                feats["altitude_game"] = ctx["altitude_game"]
             samples.append(
                 {
                     "player_id": pid,
                     "game_id": game["game_id"],
                     "game_date": game["game_date"],
                     "minutes": game["minutes"],
-                    "features": _rate_features(feats, stat),
+                    "features": _rate_features(
+                        feats, stat, include_advanced=include_advanced
+                    ),
                     "target": game[stat],
                 }
             )

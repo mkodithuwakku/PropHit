@@ -9,9 +9,7 @@ For a local live refresh:
 .venv/bin/python -m src.publication.daily_refresh --db data/prophit.db --out site --live
 ```
 
-The runner pulls public consensus lines, player game logs, and defensive
-snapshots; checks whether calibration is due; generates projections and
-model-record statistics; then writes `site/daily_slate.json` and the web assets.
+The runner pulls public consensus lines, incrementally fetches only missing current-season player game logs (falling back automatically to ESPN's zero-auth public scoreboard/boxscore API if `stats.nba.com` throttles the IP, and skipping prior-season logs once seeded), derives team and position-specific defensive snapshots (`fact_team_defense_daily`) locally from `fact_player_games` with zero extra API calls; checks whether calibration is due; generates ML + advanced-stat projections and model-record statistics; then writes `site/daily_slate.json` and the web assets.
 The workflow commits `site/` and `data/prophit.db` to `main`.
 Pages is deployed by the separate Deploy GitHub Pages workflow. Confirm its
 success rather than assuming that committing refreshed data deployed it.

@@ -13,3 +13,11 @@ Write idiomatic, highly tested Python and JS code for the Prophit engine.
 - Always run Python through `.venv/bin/python`.
 - Respect zero-leakage rules: features and training data must only use
   information available before tip-off.
+
+## Token-Efficiency Rules
+- For the Advanced Stats, ML Integration & Zero-Throttle Ingestion Epic, read
+  `docs/runbooks/RUNBOOK_ADVANCED_ML_EPIC.md` first — it contains exact file
+  paths, line numbers, formulas, and test invariants so you do not need broad
+  codebase searches.
+- Never read `site/daily_slate.json` or binary `data/prophit.db`.
+- Batch file reads and edits in parallel tool calls whenever possible.

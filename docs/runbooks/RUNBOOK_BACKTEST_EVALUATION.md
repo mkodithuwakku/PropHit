@@ -8,7 +8,7 @@ Prophit provides two complementary offline evaluation mechanisms in `src/evaluat
 
 ## 1. Run the Trailing-Mean Proxy Backtest
 
-Because sportsbooks do not publish free historical prop archives, `backtest()` grades the model against each player's pre-game L20 average rounded to the nearest `0.5` at `-110` on both sides (filtering to appearances with `minutes >= 10.0` and `min_history >= 10`).
+Because sportsbooks do not publish free historical prop archives, `backtest()` grades the model against each player's pre-game L20 average rounded to the nearest `0.5` at `-110` on both sides (filtering to appearances with `minutes >= 10.0` and `min_history >= 10`). It evaluates the contextual advanced-stat multiplier (`dvp_weight`, `expected_pace_factor`, `ts_regression_delta`, `role_expansion_delta`) scaled by `ml_blend_weight`, Empirical-Bayes shrinkage (`prior_games`), and blended Negative Binomial + Monte Carlo PMFs (`mc_blend_weight`).
 
 ```bash
 .venv/bin/python -c "

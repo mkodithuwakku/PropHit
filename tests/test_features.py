@@ -351,3 +351,350 @@ def test_redistribute_with_unknown_out_player(rotation_db):
     result = engine.redistribute(TEAM2, [999999], "2025-10-20")
     assert result["vacated_minutes"] == 0.0
     assert result["adjustments"][PA]["extra_minutes"] == 0.0
+
+
+# --- advanced efficiency stats -------------------------------------------------
+
+
+@pytest.fixture
+def rich_db(db):
+    """10 fully-statted games for PLAYER_ID (constant 34 MIN)."""
+    seed_player(db, PLAYER_ID, "Rich Tester", TEAM_ID, "AAA")
+    for i, d in enumerate(GAME_DATES):
+        seed_game(
+            db,
+            PLAYER_ID,
+            d,
+            TEAM_ID,
+            minutes=34,
+            pts=10 + 2 * i,
+            fgm=4 + (i % 3),
+            fga=10,
+            fg3m=2,
+            fg3a=5,
+            ftm=3,
+            fta=4,
+            oreb=3,
+            dreb=9,
+            reb=12,
+            ast=7,
+            stl=1,
+            blk=1,
+            tov=2,
+            pf=2,
+            plus_minus=4.0,
+        )
+    return db
+
+
+def test_ts_pct_efg_and_rate_ratios(rich_db):
+    feats = FeatureStore(rich_db).rolling_features(PLAYER_ID, "2025-10-20")
+    # L7 sums: pts 28+26+24+22+20+18+16=154, fga 70, fta 28
+    assert feats["ts_pct_l7"] == pytest.approx(154 / (2 * (70 + 0.44 * 28)))
+    assert feats["ts_pct_l20"] == pytest.approx(190 / (2 * (100 + 0.44 * 40)))
+    assert feats["ts_pct_ewma"] is not None
+    # L3: 78 pts, denom 2*(30 + 0.44*12)
+    l3_ts = 78 / (2 * (30 + 0.44 * 12))
+    assert feats["ts_pct_l3"] == pytest.approx(l3_ts)
+    assert feats["ts_regression_delta"] == pytest.approx(l3_ts - feats["ts_pct_l20"])
+    # efg L20: (fgm_sum + 0.5*20) / 100 ; fgm per game = 4+(i%3) -> sum 4*10+15=55? compute directly
+    fgm_sum = sum(4 + (i % 3) for i in range(10))
+    assert feats["efg_pct_l20"] == pytest.approx((fgm_sum + 0.5 * 20) / 100)
+    assert feats["ftr_l20"] == pytest.approx(40 / 100)
+    assert feats["fg3a_rate_l20"] == pytest.approx(50 / 100)
+    assert feats["fg3a_per_min_l20"] == pytest.approx(50 / 340)
+    assert feats["fga_per_min_l20"] == pytest.approx(100 / 340)
+    assert feats["fta_per_min_l20"] == pytest.approx(40 / 340)
+
+
+def test_ts_pct_neutral_when_no_shots(db):
+    seed_player(db, PLAYER_ID, "No Shot", TEAM_ID, "AAA")
+    seed_game(db, PLAYER_ID, "2025-10-19", TEAM_ID, minutes=12, fga=0, fta=0)
+    feats = FeatureStore(db).rolling_features(PLAYER_ID, "2025-10-20")
+    assert feats["ts_pct_l7"] == pytest.approx(0.55)
+    assert feats["ts_pct_l20"] == pytest.approx(0.55)
+    assert feats["efg_pct_l20"] is None  # zero FGA -> undefined, not neutral
+
+
+def test_extended_per_minute_rates(rich_db):
+    feats = FeatureStore(rich_db).rolling_features(PLAYER_ID, "2025-10-20")
+    for stat, total in (
+        ("stl", 10),
+        ("blk", 10),
+        ("tov", 20),
+        ("oreb", 30),
+        ("dreb", 90),
+        ("fga", 100),
+        ("fta", 40),
+    ):
+        assert feats[f"{stat}_per_min_l20"] == pytest.approx(total / 340)
+        assert feats[f"{stat}_per_min_ewma"] is not None
+
+
+# --- on-floor shares (canonical team fallback) ----------------------------------
+
+
+def test_on_floor_shares_use_canonical_baseline(rich_db):
+    """Single-player team -> canonical 240min/88fga/22fta/14tov/44reb team."""
+    feats = FeatureStore(rich_db).rolling_features(PLAYER_ID, "2025-10-20")
+    # usage = 10 + 0.44*4 + 2 = 13.76; team usage = 88 + 9.68 + 14 = 111.68
+    exp_usg = 100 * 13.76 * 48 / (34 * 111.68)
+    assert feats["usg_pct_l20"] == pytest.approx(exp_usg)
+    assert feats["usg_pct_l7"] == pytest.approx(exp_usg)
+    assert feats["usg_pct_ewma"] == pytest.approx(exp_usg)
+    # reb share: 100*12*48/(34*44); oreb: 100*3*48/(34*10); dreb: 100*9*48/(34*34)
+    assert feats["reb_pct_l20"] == pytest.approx(100 * 12 * 48 / (34 * 44))
+    assert feats["oreb_pct_l20"] == pytest.approx(100 * 3 * 48 / (34 * 10))
+    assert feats["dreb_pct_l20"] == pytest.approx(100 * 9 * 48 / (34 * 34))
+    # ast share of teammate FGM: team fgm 42 - player fgm(4+i%3)
+    fgm_sum = sum(4 + (i % 3) for i in range(10))
+    exp_ast = sum(100 * 7 * 48 / (34 * (42 - (4 + (i % 3)))) for i in range(10)) / 10
+    assert feats["ast_pct_l20"] == pytest.approx(exp_ast)
+    assert feats["tov_pct_l20"] == pytest.approx(100 * 20 / (13.76 * 10))
+    assert feats["ast_to_tov_l20"] == pytest.approx(70 / 20)
+
+
+def test_role_expansion_and_minutes_trend(rich_db):
+    feats = FeatureStore(rich_db).rolling_features(PLAYER_ID, "2025-10-20")
+    # constant workload -> zero deltas
+    assert feats["role_expansion_delta"] == pytest.approx(0.0)
+    assert feats["minutes_trend_delta"] == pytest.approx(0.0)
+    # add a heavy recent stretch: 40 min, 20 fga on the last 3 dates
+    for d in GAME_DATES[-3:]:
+        seed_game(rich_db, PLAYER_ID, d, TEAM_ID, minutes=40, fga=20)
+    feats = FeatureStore(rich_db).rolling_features(PLAYER_ID, "2025-10-20")
+    assert feats["minutes_trend_delta"] > 0
+    assert feats["role_expansion_delta"] > 0
+
+
+# --- composite impact & volatility ----------------------------------------------
+
+
+def test_game_score_pie_and_volatility(rich_db):
+    feats = FeatureStore(rich_db).rolling_features(PLAYER_ID, "2025-10-20")
+    assert feats["game_score_l7"] is not None
+    assert feats["game_score_l20"] is not None
+    assert feats["game_score_ewma"] is not None
+    # pts rise over the series -> recent game scores exceed long-run mean
+    assert feats["game_score_l7"] > feats["game_score_l20"]
+    assert feats["minutes_std_l20"] == pytest.approx(0.0)  # constant 34
+    assert feats["pts_cv_l20"] > 0
+    assert feats["reb_cv_l20"] == pytest.approx(0.0)  # constant 12
+    assert feats["foul_rate_per36_l20"] == pytest.approx(36 * 20 / 340)
+    assert feats["plus_minus_per_min_l20"] == pytest.approx(40 / 340)
+    assert feats["pie_l20"] > 0
+
+
+def test_minutes_std_varies(rich_db):
+    for i, d in enumerate(GAME_DATES):
+        seed_game(rich_db, PLAYER_ID, d, TEAM_ID, minutes=20 + 2 * i)
+    feats = FeatureStore(rich_db).rolling_features(PLAYER_ID, "2025-10-20")
+    import statistics as _st
+
+    assert feats["minutes_std_l20"] == pytest.approx(
+        _st.stdev([20 + 2 * i for i in range(10)])
+    )
+
+
+def test_advanced_stats_are_leak_free(rich_db):
+    store = FeatureStore(rich_db)
+    before = store.rolling_features(PLAYER_ID, "2025-10-20")
+    seed_game(
+        rich_db,
+        PLAYER_ID,
+        "2025-10-20",
+        TEAM_ID,
+        minutes=48,
+        pts=99,
+        fgm=20,
+        fga=30,
+        stl=9,
+        pf=6,
+        plus_minus=40.0,
+    )
+    after = store.rolling_features(PLAYER_ID, "2025-10-20")
+    assert after == before
+
+
+# --- team pace & expected pace factor -------------------------------------------
+
+
+def test_team_pace_estimate(rich_db):
+    # single-player "team": poss = 10 + 0.44*4 - 3 + 2 = 10.76 per game
+    pace = FeatureStore(rich_db).team_pace(TEAM_ID, "2025-10-20")
+    assert pace == pytest.approx(10 + 0.44 * 4 - 3 + 2)
+
+
+def test_expected_pace_factor_neutral_for_synthetic(rich_db):
+    assert (
+        FeatureStore(rich_db).expected_pace_factor(TEAM_ID, OPP_ID, "2025-10-20") == 1.0
+    )
+
+
+def test_expected_pace_factor_multi_team(db):
+    """Three teams (3 players each) with different possession volumes."""
+    for team_id, fga in ((7001, 15), (7002, 8), (7003, 12)):
+        for p in range(3):
+            pid = team_id * 10 + p
+            seed_player(db, pid, f"P{pid}", team_id, f"T{team_id}")
+            for d in ["2025-10-13", "2025-10-15", "2025-10-17", "2025-10-19"]:
+                seed_game(
+                    db,
+                    pid,
+                    d,
+                    team_id,
+                    game_id=f"tg-{team_id}-{d}",  # teammates share a game
+                    minutes=40,
+                    fga=fga,
+                    fta=2,
+                    oreb=1,
+                    tov=2,
+                )
+    store = FeatureStore(db)
+    # team poss/game: 3*fga + 0.44*6 - 3 + 6
+    assert store.team_pace(7001, "2025-10-20") == pytest.approx(45 + 2.64 - 3 + 6)
+    fast = store.expected_pace_factor(7001, 7003, "2025-10-20")
+    slow = store.expected_pace_factor(7002, 7003, "2025-10-20")
+    assert 0.92 <= slow < fast <= 1.08
+
+
+def test_expected_pace_factor_leak_free(db):
+    """A monster same-day game must not change the pace factor."""
+    for team_id in (8001, 8002, 8003):
+        for p in range(3):
+            pid = team_id * 10 + p
+            seed_player(db, pid, f"P{pid}", team_id, f"T{team_id}")
+            for d in ["2025-10-15", "2025-10-17", "2025-10-19"]:
+                seed_game(
+                    db,
+                    pid,
+                    d,
+                    team_id,
+                    game_id=f"lg-{team_id}-{d}",
+                    minutes=40,
+                    fga=10 + (team_id % 3),
+                    fta=2,
+                    tov=2,
+                )
+    store = FeatureStore(db)
+    before = store.expected_pace_factor(8001, 8002, "2025-10-20")
+    for p in range(3):
+        seed_game(
+            db,
+            8001 * 10 + p,
+            "2025-10-20",
+            8001,
+            game_id="lg-8001-x",
+            minutes=48,
+            fga=60,
+            tov=30,
+        )
+    assert store.expected_pace_factor(8001, 8002, "2025-10-20") == before
+
+
+# --- position-aware & combo matchup vulnerability --------------------------------
+
+
+def test_matchup_vulnerability_position_scope(db):
+    for team_id, all_pts, c_pts in ((2000, 100.0, 140.0), (2001, 110.0, 130.0)):
+        db.upsert_team(team_id, f"D{team_id}")
+        db.upsert_team_defense(
+            {
+                "team_id": team_id,
+                "snapshot_date": "2025-10-19",
+                "opp_pts": all_pts,
+                "position_scope": "ALL",
+            }
+        )
+        db.upsert_team_defense(
+            {
+                "team_id": team_id,
+                "snapshot_date": "2025-10-19",
+                "opp_pts": c_pts,
+                "position_scope": "C",
+            }
+        )
+    store = FeatureStore(db)
+    assert store.matchup_vulnerability(2001, "pts", "2025-10-20") == pytest.approx(1.0)
+    # C scope flips the ordering: 2001 allows 130 < 2000's 140
+    assert store.matchup_vulnerability(
+        2001, "pts", "2025-10-20", position="C"
+    ) == pytest.approx(0.5)
+    # unseeded scope falls back to ALL
+    assert store.matchup_vulnerability(
+        2001, "pts", "2025-10-20", position="PG"
+    ) == pytest.approx(1.0)
+
+
+def test_matchup_vulnerability_combos(seeded_db):
+    _seed_defense_snapshot(seeded_db, "2025-10-19", {2000: 100.0, 2004: 120.0})
+    store = FeatureStore(seeded_db)
+    components = [
+        store.matchup_vulnerability(2004, s, "2025-10-20")
+        for s in ("pts", "reb", "ast")
+    ]
+    combo = store.matchup_vulnerability(2004, "pts_reb_ast", "2025-10-20")
+    assert combo == pytest.approx(sum(components) / 3)
+    assert store.matchup_vulnerability(2004, "pra", "2025-10-20") == pytest.approx(
+        combo
+    )
+
+
+def test_derived_stl_vulnerability(db):
+    """stl/blk/tov have no defense column -> derived from game logs."""
+    seed_player(db, 9101, "S1", 9100, "T9100")
+    seed_player(db, 9102, "S2", 9200, "T9200")
+    seed_player(db, 9103, "S3", 9300, "T9300")
+    dates = ["2025-10-13", "2025-10-15", "2025-10-17"]
+    for d in dates:
+        seed_game(db, 9101, d, 9100, opp_id=8001, stl=0, minutes=30)
+        seed_game(db, 9102, d, 9200, opp_id=8002, stl=4, minutes=30)
+        seed_game(db, 9103, d, 9300, opp_id=8003, stl=8, minutes=30)
+    store = FeatureStore(db)
+    assert store.matchup_vulnerability(8003, "stl", "2025-10-20") == pytest.approx(1.0)
+    assert store.matchup_vulnerability(8001, "stl", "2025-10-20") == pytest.approx(
+        1 / 3
+    )
+    # same-day games are invisible to the derivation
+    seed_game(db, 9103, "2025-10-20", 9300, opp_id=8003, stl=99, minutes=48)
+    assert store.matchup_vulnerability(8003, "stl", "2025-10-20") == pytest.approx(1.0)
+
+
+def test_scoped_vulnerability_falls_back_to_all(db):
+    """Opponent missing from a position scope -> ALL-scope percentile."""
+    db.upsert_team(2000, "D0")
+    db.upsert_team(2001, "D1")
+    db.upsert_team_defense(
+        {
+            "team_id": 2000,
+            "snapshot_date": "2025-10-19",
+            "opp_pts": 100.0,
+            "position_scope": "ALL",
+        }
+    )
+    db.upsert_team_defense(
+        {
+            "team_id": 2001,
+            "snapshot_date": "2025-10-19",
+            "opp_pts": 110.0,
+            "position_scope": "ALL",
+        }
+    )
+    # C scope exists for the snapshot but only covers team 2000
+    db.upsert_team_defense(
+        {
+            "team_id": 2000,
+            "snapshot_date": "2025-10-19",
+            "opp_pts": 140.0,
+            "position_scope": "C",
+        }
+    )
+    store = FeatureStore(db)
+    # 2001 missing from C scope -> falls back to ALL (softest matchup)
+    assert store.matchup_vulnerability(
+        2001, "pts", "2025-10-20", position="C"
+    ) == pytest.approx(1.0)
+    # 2000 is present in C scope -> resolves there
+    assert store.matchup_vulnerability(
+        2000, "pts", "2025-10-20", position="C"
+    ) == pytest.approx(1.0)

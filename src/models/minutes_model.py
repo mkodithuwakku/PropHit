@@ -35,6 +35,17 @@ MINUTES_FEATURES = [
     "altitude_game",
 ]
 
+# Included automatically when present in sample feature dicts (DB-built
+# samples carry them; hand-written synthetic samples do not).
+ADVANCED_MINUTES_FEATURES = [
+    "minutes_std_l20",
+    "foul_rate_per36_l20",
+    "role_expansion_delta",
+    "game_score_l7",
+    "usg_pct_l7",
+    "plus_minus_per_min_l20",
+]
+
 DEFAULT_LGBM_PARAMS = {
     "objective": "huber",
     "n_estimators": 200,
@@ -171,9 +182,16 @@ class MinutesModel:
     def __init__(self, params: Optional[dict] = None):
         self.params = params or {}
         self._model = None
+        self._feature_names: list[str] = list(MINUTES_FEATURES)
 
     def fit(self, samples: list[dict]) -> "MinutesModel":
-        X = to_matrix([s["features"] for s in samples], self.FEATURES)
+        feature_dicts = [s["features"] for s in samples]
+        self._feature_names = MINUTES_FEATURES + [
+            k
+            for k in ADVANCED_MINUTES_FEATURES
+            if any(fd.get(k) is not None for fd in feature_dicts)
+        ]
+        X = to_matrix(feature_dicts, self._feature_names)
         y = np.asarray([s["minutes"] for s in samples], dtype=float)
         self._model = make_regressor(self.params)
         self._model.fit(X, y)
@@ -182,7 +200,7 @@ class MinutesModel:
     def predict(self, features: dict) -> float:
         if self._model is None:
             raise RuntimeError("MinutesModel.predict called before fit")
-        X = to_matrix([features], self.FEATURES)
+        X = to_matrix([features], self._feature_names)
         return float(self._model.predict(X)[0])
 
     def predict_many(self, feature_dicts: list[dict]) -> list[float]:
@@ -201,13 +219,15 @@ def build_minutes_samples(
     db: ProphitDB,
     player_ids: Optional[list[int]] = None,
     min_prior_games: int = 5,
+    store: Optional[FeatureStore] = None,
+    max_games_per_player: Optional[int] = None,
 ) -> list[dict]:
     """Assemble (features -> minutes) training rows from fact_player_games.
 
     Features for each game use only games strictly before it; game context
     (home/away, altitude) is known pre-tip-off and included.
     """
-    store = FeatureStore(db)
+    store = store or FeatureStore(db)
     if player_ids is None:
         player_ids = [
             r["player_id"]
@@ -222,6 +242,8 @@ def build_minutes_samples(
             "ORDER BY game_date",
             (pid,),
         )
+        if max_games_per_player:
+            games = games[-max_games_per_player:]
         for game in games:
             feats = store.rolling_features(pid, game["game_date"])
             if feats["games_available"] < min_prior_games:

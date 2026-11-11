@@ -42,8 +42,24 @@ COMBO_STATS = {
 WEB_DIR = Path(__file__).resolve().parents[2] / "web"
 
 
+def _setting_float(db: ProphitDB, key: str, fallback: float) -> float:
+    try:
+        raw = db.get_setting(key)
+        return float(raw) if raw is not None else fallback
+    except (TypeError, ValueError):
+        return fallback
+
+
+def _clamp(value: float, lo: float, hi: float) -> float:
+    return min(max(value, lo), hi)
+
+
 class SlateGenerator:
     """Produces evaluated play cards for a game date from the local DB."""
+
+    MIN_ML_TRAIN_SAMPLES = 60
+    ML_SAMPLE_CAP = 400
+    MIN_STAT_MODEL_SAMPLES = 30
 
     def __init__(
         self,
@@ -71,7 +87,15 @@ class SlateGenerator:
         # Empirical-Bayes shrinkage: with thin box-score history the market
         # line is the best prior, so model means are pulled toward it.
         # weight_model = n / (n + prior_games); at n=20 the model gets ~77%.
-        self.prior_games = prior_games
+        self.prior_games = _setting_float(db, "prior_games", prior_games)
+        # Stage 1/2 ML blend + contextual multipliers (calibrated settings).
+        self.ml_weight = _setting_float(db, "ml_blend_weight", 0.55)
+        self.dvp_weight = _setting_float(db, "dvp_weight", 0.08)
+        self.mc_weight = _setting_float(db, "mc_blend_weight", 0.25)
+        self._minutes_model = None
+        self._stat_models: dict = {}
+        self._ml_date: Optional[str] = None
+        self._multi_team: Optional[bool] = None
 
     def latest_consensus_lines(self, game_date: str) -> list:
         """Most recent consensus snapshot per event/player/market,
@@ -105,15 +129,157 @@ class SlateGenerator:
         )
         return [float(sum(r[s] or 0 for s in stats)) for r in rows]
 
+    # --- Stage 1/2 ML models -------------------------------------------------
+
+    def _ensure_ml_models(
+        self, game_date: str, player_ids: Optional[list[int]] = None
+    ) -> None:
+        """Lazily fit the minutes + per-stat models once per slate.
+
+        All training rows are strictly before ``game_date`` (leak-free).
+        Skipped entirely below MIN_ML_TRAIN_SAMPLES so small fixtures
+        fast-path without fitting noise; sample lists are capped at
+        ML_SAMPLE_CAP so production fits stay sub-second.
+        """
+        game_date = str(game_date)[:10]
+        if self._ml_date == game_date:
+            return
+        self._ml_date = game_date
+        self._minutes_model = None
+        self._stat_models = {}
+
+        n_rows = self.db.query_one(
+            "SELECT COUNT(*) AS n FROM fact_player_games WHERE game_date < ?",
+            (game_date,),
+        )["n"]
+        if n_rows < self.MIN_ML_TRAIN_SAMPLES:
+            return
+
+        from src.models.minutes_model import MinutesModel, build_minutes_samples
+        from src.models.stat_models import build_rate_samples, build_stat_model
+
+        if not player_ids or len(player_ids) < 10:
+            db_pids = [
+                r["player_id"]
+                for r in self.db.query(
+                    "SELECT DISTINCT player_id FROM fact_player_games "
+                    "WHERE game_date < ? LIMIT 25",
+                    (game_date,),
+                )
+            ]
+            player_ids = sorted(set(player_ids or []) | set(db_pids))
+        if not player_ids:
+            return
+        # Bound the player set: rolling_features is cached per (pid, date,
+        # row_count), so the minutes + 4 stat builders share each player's
+        # computed feature dicts with zero duplicate SQL work.
+        player_ids = list(player_ids)[:25]
+        per_player_cap = 12 if len(player_ids) >= 10 else None
+
+        try:
+            samples = [
+                s
+                for s in build_minutes_samples(
+                    self.db,
+                    player_ids,
+                    store=self.store,
+                    max_games_per_player=per_player_cap,
+                )
+                if s["game_date"] < game_date
+            ][-self.ML_SAMPLE_CAP :]
+            if len(samples) >= self.MIN_ML_TRAIN_SAMPLES:
+                self._minutes_model = MinutesModel().fit(samples)
+        except Exception:
+            self._minutes_model = None
+
+        for stat in ("pts", "reb", "ast", "fg3m"):
+            try:
+                rs = [
+                    s
+                    for s in build_rate_samples(
+                        self.db,
+                        stat,
+                        player_ids,
+                        include_advanced=True,
+                        store=self.store,
+                        max_games_per_player=per_player_cap,
+                    )
+                    if s["game_date"] < game_date
+                ][-self.ML_SAMPLE_CAP :]
+                if len(rs) >= self.MIN_STAT_MODEL_SAMPLES:
+                    self._stat_models[stat] = build_stat_model(stat).fit(rs)
+            except Exception:
+                continue
+
     def _projected_minutes(self, feats: dict) -> Optional[float]:
+        min_base = None
         for key in ("minutes_ewma", "minutes_l7", "minutes_l20", "minutes_l3"):
             if feats.get(key) is not None:
-                return float(feats[key])
-        return None
+                min_base = float(feats[key])
+                break
+        if min_base is None:
+            return None
+        if self._minutes_model is not None:
+            try:
+                min_ml = _clamp(
+                    self._minutes_model.predict(feats),
+                    0.5 * min_base,
+                    1.45 * min_base,
+                )
+                return self.ml_weight * min_ml + (1 - self.ml_weight) * min_base
+            except Exception:
+                pass
+        return min_base
+
+    def _multi_team_data(self) -> bool:
+        if self._multi_team is None:
+            row = self.db.query_one(
+                "SELECT COUNT(DISTINCT team_id) AS n FROM fact_player_games"
+            )
+            self._multi_team = bool(row and row["n"] >= 2)
+        return self._multi_team
+
+    def _context_multiplier(self, feats: dict, stat: str, ctx: dict) -> float:
+        """DvP + pace + efficiency/rest adjustments, clamped [0.85, 1.18]."""
+        vuln = (
+            self.store.matchup_vulnerability(
+                ctx["opp_id"],
+                stat,
+                ctx["game_date"],
+                position=ctx.get("position"),
+            )
+            if ctx.get("opp_id") is not None
+            else None
+        )
+        mult = 1.0 + self.dvp_weight * ((vuln if vuln is not None else 0.5) - 0.5)
+        pace = self.store.expected_pace_factor(
+            ctx.get("team_id"), ctx.get("opp_id"), ctx["game_date"]
+        )
+        mult *= pace
+        if stat in ("pts", "fg3m"):
+            mult += -0.15 * (feats.get("ts_regression_delta") or 0.0)
+            role = _clamp(feats.get("role_expansion_delta") or 0.0, -0.2, 0.2)
+            mult += 0.10 * role
+        # Schedule context only when the minutes model isn't active (the
+        # fitted model already internalizes rest) and real multi-team data
+        # exists — keeps single-team fixtures neutral.
+        if self._minutes_model is None and self._multi_team_data():
+            if feats.get("is_b2b"):
+                mult -= 0.025
+            if feats.get("is_3_in_4"):
+                mult -= 0.015
+            if feats.get("altitude_game"):
+                mult -= 0.02
+            if (feats.get("days_rest") or 0) >= 3:
+                mult += 0.015
+        return _clamp(mult, 0.85, 1.18)
 
     def _projected_mean(
-        self, feats: dict, stat: str, minutes: float
+        self, feats: dict, stat: str, minutes: float, ctx: Optional[dict] = None
     ) -> Optional[float]:
+        from src.models.stat_models import _rate_features
+
+        ctx = ctx or {}
         stats = COMBO_STATS.get(stat, (stat,))
         total = 0.0
         for s in stats:
@@ -124,7 +290,16 @@ class SlateGenerator:
                     rate = ewma / max(l7, 1.0)
             if rate is None:
                 return None
-            total += rate * minutes
+            mu_s = rate * minutes
+            model = self._stat_models.get(s)
+            if model is not None:
+                try:
+                    rate_feats = _rate_features(feats, s, include_advanced=True)
+                    count_ml = model.predict_count(rate_feats, minutes)
+                    mu_s = self.ml_weight * count_ml + (1 - self.ml_weight) * mu_s
+                except Exception:
+                    pass
+            total += mu_s * self._context_multiplier(feats, s, ctx)
         return total
 
     def _factor_block(
@@ -134,18 +309,24 @@ class SlateGenerator:
         stat: str,
         game_date: str,
         minutes: float,
+        position: Optional[str] = None,
+        team_id: Optional[int] = None,
     ) -> dict:
         vuln = (
             self.store.matchup_vulnerability(
                 opp_id,
                 stat if stat in ("pts", "reb", "ast", "fg3m") else "pts",
                 game_date,
+                position=position,
             )
             if opp_id is not None
             else None
         )
         dvp_rank = round(vuln * 29) + 1 if vuln is not None else None
         days_rest = feats.get("days_rest")
+        ts_pct = feats.get("ts_pct_l7")
+        usg_pct = feats.get("usg_pct_l20")
+        game_score = feats.get("game_score_l7")
         return {
             "projected_minutes": round(minutes, 1),
             "dvp_rank": dvp_rank,
@@ -165,6 +346,13 @@ class SlateGenerator:
                 )
             ),
             "altitude": bool(feats.get("altitude_game", 0)),
+            "ts_pct": round(ts_pct, 3) if ts_pct is not None else None,
+            "usg_pct": round(usg_pct, 1) if usg_pct is not None else None,
+            "pace_factor": round(
+                self.store.expected_pace_factor(team_id, opp_id, game_date), 3
+            ),
+            "ml_active": bool(self._minutes_model or self._stat_models),
+            "game_score": round(game_score, 1) if game_score is not None else None,
         }
 
     def _inactive_this_season(self, player_id: int, game_date: str) -> bool:
@@ -236,55 +424,51 @@ class SlateGenerator:
             return f"{n}th"
         return f"{n}{ {1: 'st', 2: 'nd', 3: 'rd'}.get(n % 10, 'th')}"
 
-    def generate_plays(self, game_date: Optional[str] = None) -> list[dict]:
+    def generate_plays(
+        self, game_date: Optional[str] = None, injury_entries=None
+    ) -> list[dict]:
         """Evaluate every latest consensus line into a play card."""
         game_date = str(game_date or _date.today().isoformat())[:10]
+        lines = self.latest_consensus_lines(game_date)
+        slate_pids = sorted(
+            {l["player_id"] for l in lines if l["player_id"] is not None}
+        )
+        self._ensure_ml_models(game_date, player_ids=slate_pids or None)
+
+        # Vacated usage: resolved once per team when an injury report is
+        # supplied — out teammates push minutes (and usage) to the rest.
+        vac_engine = None
+        vacated_by_team: dict = {}
+        out_players: set = set()
+        if injury_entries:
+            from src.features.vacated_usage import VacatedUsageEngine
+
+            vac_engine = VacatedUsageEngine(self.db)
+
+        def vacated(team_id):
+            if team_id not in vacated_by_team:
+                out_ids = (
+                    vac_engine.resolve_out_players(injury_entries, team_id)
+                    if vac_engine and team_id
+                    else set()
+                )
+                out_players.update(out_ids)
+                adj = (
+                    vac_engine.redistribute(team_id, sorted(out_ids), game_date)[
+                        "adjustments"
+                    ]
+                    if out_ids
+                    else {}
+                )
+                vacated_by_team[team_id] = adj
+            return vacated_by_team[team_id]
+
         plays = []
-        for line_row in self.latest_consensus_lines(game_date):
+        for line_row in lines:
             stat = MARKET_TO_STAT.get(line_row["market"])
             player_id = line_row["player_id"]
             if stat is None or player_id is None:
                 continue
-
-            feats = self.store.rolling_features(player_id, game_date)
-            minutes = self._projected_minutes(feats)
-            if minutes is None:
-                continue
-            mu = self._projected_mean(feats, stat, minutes)
-            if mu is None:
-                continue
-
-            history = self._stat_history(player_id, stat, game_date)
-            if line_row["line"] is not None and self.prior_games > 0:
-                n = len(history)
-                mu = (n * mu + self.prior_games * line_row["line"]) / (
-                    n + self.prior_games
-                )
-            low_conf, conf_reasons = self._confidence(
-                feats,
-                stat,
-                len(history),
-                inactive_this_season=self._inactive_this_season(player_id, game_date),
-            )
-            pmf = self.dist.neg_binomial_pmf(mu, history=history or None)
-            ev = self.ev.evaluate_line(
-                pmf,
-                line_row["line"],
-                over_price=line_row["over_price"],
-                under_price=line_row["under_price"],
-            )
-            ladder = self.ladder.build_ladder(
-                pmf,
-                consensus_line=line_row["line"],
-                model_mean=mu,
-                player_name=line_row["player_name"],
-                market=line_row["market"],
-            )
-            if low_conf:
-                ladder = {**ladder, "triggered": False}
-            suppressed = stat in self.suppressed_markets
-            if suppressed:
-                ladder = {**ladder, "triggered": False}
 
             player = self.db.query_one(
                 "SELECT p.*, t.abbreviation AS team_abbr FROM dim_players p "
@@ -311,6 +495,80 @@ class SlateGenerator:
             )
             opp_id = self.db.team_id_for_abbr(opp_abbr) if opp_abbr else None
             is_home = bool(team_abbr and team_abbr == line_row["home_team_abbr"])
+            team_id = player["team_id"] if player else None
+            position = player["position"] if player else None
+
+            feats = self.store.rolling_features(player_id, game_date)
+            ctx_game = self.store.game_context(
+                game_date, opponent_team_id=opp_id, is_home=is_home
+            )
+            feats["is_home"] = int(is_home)
+            feats["altitude_game"] = ctx_game["altitude_game"]
+
+            minutes = self._projected_minutes(feats)
+            if minutes is None:
+                continue
+            vac_map = vacated(team_id) if team_id else {}
+            if player_id in out_players:
+                continue  # listed OUT on the injury report
+            vac_adj = vac_map.get(player_id)
+            if vac_adj:
+                minutes += vac_adj["extra_minutes"]
+
+            ctx = {
+                "opp_id": opp_id,
+                "team_id": team_id,
+                "game_date": game_date,
+                "position": position,
+            }
+            mu = self._projected_mean(feats, stat, minutes, ctx)
+            if mu is None:
+                continue
+
+            history = self._stat_history(player_id, stat, game_date)
+            if line_row["line"] is not None and self.prior_games > 0:
+                n = len(history)
+                mu = (n * mu + self.prior_games * line_row["line"]) / (
+                    n + self.prior_games
+                )
+            low_conf, conf_reasons = self._confidence(
+                feats,
+                stat,
+                len(history),
+                inactive_this_season=self._inactive_this_season(player_id, game_date),
+            )
+            minutes_std = feats.get("minutes_std_l20") or 0.0
+            mc_w = self.mc_weight if len(history) >= 15 else 0.0
+            pmf = (
+                self.dist.blended_pmf(
+                    mu,
+                    history=history or None,
+                    minutes_mean=minutes,
+                    minutes_std=minutes_std,
+                    rate_mean=mu / max(minutes, 1.0),
+                    weight_mc=mc_w,
+                )
+                if mc_w > 0
+                else self.dist.neg_binomial_pmf(mu, history=history or None)
+            )
+            ev = self.ev.evaluate_line(
+                pmf,
+                line_row["line"],
+                over_price=line_row["over_price"],
+                under_price=line_row["under_price"],
+            )
+            ladder = self.ladder.build_ladder(
+                pmf,
+                consensus_line=line_row["line"],
+                model_mean=mu,
+                player_name=line_row["player_name"],
+                market=line_row["market"],
+            )
+            if low_conf:
+                ladder = {**ladder, "triggered": False}
+            suppressed = stat in self.suppressed_markets
+            if suppressed:
+                ladder = {**ladder, "triggered": False}
 
             plays.append(
                 {
@@ -348,7 +606,13 @@ class SlateGenerator:
                     "confidence_reasons": conf_reasons,
                     "market_suppressed": suppressed,
                     "factors": self._factor_block(
-                        feats, opp_id, stat, game_date, minutes
+                        feats,
+                        opp_id,
+                        stat,
+                        game_date,
+                        minutes,
+                        position=position,
+                        team_id=team_id,
                     ),
                     "milestone": {
                         "triggered": ladder["triggered"],

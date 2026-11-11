@@ -79,6 +79,106 @@ def test_unsuppression_when_market_recovers(tmp_path):
     db.close()
 
 
+def _seed_settled_day(db, game_date, pid=1):
+    db.upsert_team(8000, "TST")
+    db.upsert_team(8100, "OPP")
+    db.upsert_player(pid, "Settle Man", team_id=8000)
+    db.upsert_player_game(
+        {
+            "game_id": f"settled-{pid}-{game_date}",
+            "player_id": pid,
+            "team_id": 8000,
+            "opponent_team_id": 8100,
+            "game_date": game_date,
+            "minutes": 30.0,
+            "pts": 18,
+        }
+    )
+    db.insert_consensus_line(
+        {
+            "event_id": f"evt-{game_date}",
+            "game_date": game_date,
+            "home_team_abbr": "TST",
+            "away_team_abbr": "OPP",
+            "player_id": pid,
+            "player_name": "Settle Man",
+            "market": "player_points",
+            "bookmaker": "CONSENSUS",
+            "line": 18.5,
+            "over_price": -110,
+            "under_price": -110,
+            "is_consensus": 1,
+            "snapshot_time": f"{game_date}T12:00:00Z",
+        }
+    )
+
+
+def test_early_trigger_when_enough_days_settled(tmp_path):
+    """<14d since last run but >=3 new settled game_dates -> still runs."""
+    db = ProphitDB(str(tmp_path / "t.db"))
+    now = datetime.now(timezone.utc)
+    db.set_setting("last_calibration", (now - timedelta(days=3)).isoformat())
+    for back in (1, 2, 3):
+        _seed_settled_day(db, (now - timedelta(days=back)).date().isoformat())
+
+    res = run_calibration(db, backtest_fn=_fake_backtest([]), min_new_settled_days=3)
+    assert res["ran"] is True
+    db.close()
+
+
+def test_no_early_trigger_below_settled_threshold(tmp_path):
+    db = ProphitDB(str(tmp_path / "t.db"))
+    now = datetime.now(timezone.utc)
+    db.set_setting("last_calibration", (now - timedelta(days=3)).isoformat())
+    for back in (1, 2):
+        _seed_settled_day(db, (now - timedelta(days=back)).date().isoformat())
+
+    res = run_calibration(db, backtest_fn=_fake_backtest([]), min_new_settled_days=3)
+    assert res["ran"] is False
+    db.close()
+
+
+def test_multi_parameter_sweep_persists_and_clamps(tmp_path):
+    """prior_games swept to best ladder value, clamped ±2 per run."""
+    db = ProphitDB(str(tmp_path / "t.db"))
+
+    def prior_favoring_backtest(db, **kw):
+        pg = kw.get("prior_games")
+        score = {10.0: 62.0, 8.0: 55.0}.get(pg, 50.0)
+        return {
+            "overall": {"favored_hit_pct": score},
+            "per_stat": {},
+            "bets_detail": [],
+        }
+
+    res = run_calibration(db, backtest_fn=prior_favoring_backtest)
+    assert res["ran"] is True
+    # 10.0 scored best, but the ±2 drift clamp caps the move at 6+2=8
+    assert float(db.get_setting("prior_games")) == 8.0
+    assert any("prior_games 6.0->8.0" in n for n in res["notes"])
+    # flat-scored params stay at their calibrated defaults
+    assert float(db.get_setting("ml_blend_weight")) == 0.55
+    assert float(db.get_setting("dvp_weight")) == 0.08
+    assert float(db.get_setting("mc_blend_weight")) == 0.25
+    db.close()
+
+
+def test_multi_parameter_sweep_updates_weights(tmp_path):
+    db = ProphitDB(str(tmp_path / "t.db"))
+
+    def dvp_favoring_backtest(db, **kw):
+        score = 58.0 if kw.get("dvp_weight") == 0.12 else 50.0
+        return {
+            "overall": {"favored_hit_pct": score},
+            "per_stat": {},
+            "bets_detail": [],
+        }
+
+    run_calibration(db, backtest_fn=dvp_favoring_backtest)
+    assert float(db.get_setting("dvp_weight")) == 0.12
+    db.close()
+
+
 def test_generator_honors_suppressed_market(tmp_path):
     """Suppressed market still renders but is never recommended."""
     from datetime import date, timedelta

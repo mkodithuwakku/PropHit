@@ -57,6 +57,11 @@ def backtest(
     min_history: int = MIN_HISTORY,
     through_date: Optional[str] = None,
     collect: bool = False,
+    dvp_weight: float = 0.08,
+    ml_blend_weight: float = 0.55,
+    mc_blend_weight: float = 0.25,
+    max_games: int = 400,
+    store: Optional[FeatureStore] = None,
 ) -> dict[str, Any]:
     """Walk every historical player-game and grade the model.
 
@@ -66,18 +71,31 @@ def backtest(
     With collect=True also returns 'bets_detail': every play's favored
     side, its EV at -110, and its graded result — used by the calibrator
     to sweep EV thresholds without re-running the backtest.
+
+    ``dvp_weight``, ``ml_blend_weight``, and ``mc_blend_weight`` mirror
+    the live SlateGenerator knobs: the contextual multiplier (DvP
+    percentile, expected pace, TS% mean-reversion, role expansion) is
+    applied at ``ml_blend_weight`` strength, and the PMF blends in the
+    Monte Carlo estimator at ``mc_blend_weight`` once history >= 15.
+    Sweeping these in run_calibration tunes them offline.
     """
-    store = FeatureStore(db)
-    dist = DistributionEngine()
+    store = store or FeatureStore(db)
+    dist = DistributionEngine(mc_trials=1000)
     ev = EVCalculator(min_ev_pct=min_ev_pct)
 
-    games = db.query(
-        """
-        SELECT player_id, game_date, minutes FROM fact_player_games
-        WHERE minutes >= ?
-        ORDER BY game_date
-        """,
-        (MINUTES_FLOOR,),
+    games = list(
+        reversed(
+            db.query(
+                """
+                SELECT player_id, game_date, minutes, team_id, opponent_team_id
+                FROM fact_player_games
+                WHERE minutes >= ?
+                ORDER BY game_date DESC
+                LIMIT ?
+                """,
+                (MINUTES_FLOOR, int(max_games)),
+            )
+        )
     )
 
     def blank() -> dict:
@@ -127,11 +145,39 @@ def backtest(
                 rate = ewma / max(l7, 1.0) if ewma is not None and l7 else None
             if rate is None:
                 continue
-            mu_raw = rate * minutes
+
+            # Contextual multiplier: position-aware DvP + pace + efficiency
+            # mean-reversion / role expansion, applied at ml_blend_weight
+            # strength and clamped like the live generator.
+            mult = 1.0
+            opp_id = game["opponent_team_id"]
+            if opp_id is not None:
+                vuln = store.matchup_vulnerability(opp_id, stat, game_date)
+                if vuln is not None:
+                    mult += dvp_weight * (vuln - 0.5)
+            mult *= store.expected_pace_factor(game["team_id"], opp_id, game_date)
+            if stat in ("pts", "fg3m"):
+                mult += -0.15 * (feats.get("ts_regression_delta") or 0.0)
+                role = feats.get("role_expansion_delta") or 0.0
+                mult += 0.10 * min(max(role, -0.2), 0.2)
+            mult = min(max(mult, 0.85), 1.18)
+            mu_raw = rate * minutes * (1.0 + ml_blend_weight * (mult - 1.0))
             n = len(history)
             mu = (n * mu_raw + prior_games * line) / (n + prior_games)
 
-            pmf = dist.neg_binomial_pmf(mu, history=history)
+            mc_w = mc_blend_weight if len(history) >= 15 else 0.0
+            pmf = (
+                dist.blended_pmf(
+                    mu,
+                    history=history,
+                    minutes_mean=minutes,
+                    minutes_std=feats.get("minutes_std_l20") or 0.0,
+                    rate_mean=mu / max(minutes, 1.0),
+                    weight_mc=mc_w,
+                )
+                if mc_w > 0
+                else dist.neg_binomial_pmf(mu, history=history)
+            )
             ev_res = ev.evaluate_line(pmf, line, -110, -110)
 
             if actual_by_stat is None:

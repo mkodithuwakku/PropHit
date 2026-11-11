@@ -12,11 +12,15 @@ import pytest
 
 from src.features.feature_store import FeatureStore
 from src.models.minutes_model import (
+    ADVANCED_MINUTES_FEATURES,
+    MINUTES_FEATURES,
     MinutesModel,
     build_minutes_samples,
     mean_baseline,
 )
 from src.models.stat_models import (
+    ADVANCED_RATE_FEATURES,
+    RATE_FEATURES,
     LightGBMRateModel,
     NegativeBinomialRateModel,
     PoissonRateModel,
@@ -336,3 +340,73 @@ def test_build_rate_samples_from_db(minutes_db):
 def test_mean_baseline():
     samples = [{"minutes": 30.0}, {"minutes": 34.0}, {"minutes": None}]
     assert mean_baseline(samples, "minutes") == pytest.approx(32.0)
+
+
+# --- advanced feature plumbing -------------------------------------------------
+
+
+def test_build_rate_samples_include_advanced(minutes_db):
+    samples = build_rate_samples(
+        minutes_db, "ast", min_prior_games=5, include_advanced=True
+    )
+    assert len(samples) == 45
+    s = samples[0]
+    assert set(s["features"]) == set(RATE_FEATURES) | set(ADVANCED_RATE_FEATURES)
+    # populated by the feature store (pts=0 fixture -> ts_pct 0.0, not None)
+    assert s["features"]["ts_pct_l20"] is not None
+    assert s["features"]["ftr_l20"] == pytest.approx(0.2)
+    assert s["features"]["usg_pct_l7"] is not None
+    assert s["features"]["is_home"] in (0, 1)
+
+
+def test_models_select_active_features_dynamically():
+    """Base 6-key samples -> base names only; advanced keys join when present."""
+    rng = np.random.default_rng(31)
+    samples = _rate_samples(rng, 80, lambda b: 0.3, lambda i: 28.0)
+
+    base_model = PoissonRateModel().fit(samples)
+    assert base_model._feature_names == RATE_FEATURES
+    base_model.predict_count(samples[-1]["features"], 28.0)
+
+    for s in samples:
+        s["features"]["ts_pct_l7"] = 0.55
+        s["features"]["usg_pct_l20"] = 22.0
+        s["features"]["role_expansion_delta"] = 0.01
+    adv_model = PoissonRateModel().fit(samples)
+    assert "ts_pct_l7" in adv_model._feature_names
+    assert "usg_pct_l20" in adv_model._feature_names
+    assert "role_expansion_delta" in adv_model._feature_names
+    assert adv_model.predict_count(samples[-1]["features"], 28.0) > 0
+
+
+def test_lightgbm_model_dynamic_columns():
+    rng = np.random.default_rng(41)
+    samples = _rate_samples(rng, 80, lambda b: 0.5, lambda i: 30.0)
+    model = LightGBMRateModel().fit(samples)
+    assert model._feature_names == RATE_FEATURES
+    for s in samples:
+        s["features"]["game_score_l7"] = 11.0
+    model2 = LightGBMRateModel().fit(samples)
+    assert "game_score_l7" in model2._feature_names
+    assert model2.predict_count(samples[0]["features"], 30.0) >= 0.0
+
+
+def test_minutes_model_uses_advanced_features_when_present(minutes_db):
+    samples = build_minutes_samples(minutes_db)
+    model = MinutesModel().fit(samples)
+    assert set(ADVANCED_MINUTES_FEATURES) <= set(model._feature_names)
+    assert 10.0 <= model.predict(samples[-1]["features"]) <= 44.0
+
+
+def test_minutes_model_base_only_samples():
+    """Synthetic dicts without advanced keys -> base 14 features only."""
+    samples = [
+        {
+            "features": {"minutes_l7": 30.0, "minutes_l20": 30.0, "days_rest": 1},
+            "minutes": 30.0,
+        }
+        for _ in range(20)
+    ]
+    model = MinutesModel().fit(samples)
+    assert model._feature_names == MINUTES_FEATURES
+    assert model.predict({"minutes_l7": 30.0, "days_rest": 1}) > 0

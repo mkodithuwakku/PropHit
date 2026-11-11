@@ -15,9 +15,11 @@ from src.ingestion.consensus_odds import (
 )
 from src.ingestion.injuries import parse_injury_entries
 from src.ingestion.nba_stats import (
+    ESPNBoxScoreClient,
     NBAStatsClient,
     PlayerGameLogIngestion,
     TeamDefenseIngestion,
+    nba_date_param,
     parse_game_date,
     parse_matchup,
     parse_minutes,
@@ -493,3 +495,477 @@ def test_ingestion_runs_are_logged(db, load_fixture):
     sources = {r["source"]: r["records_written"] for r in runs}
     assert sources["nba_stats.player_game_log"] == 3
     assert sources["consensus_odds.prizepicks"] == 14
+
+
+# --- upsert conflict coverage -------------------------------------------------
+
+
+def _seed_game(db, player_id, game_date, team_id, opp_id, game_id=None, **stats):
+    db.upsert_team(team_id, f"T{team_id}")
+    db.upsert_team(opp_id, f"O{opp_id}")
+    db.upsert_player(player_id, f"Player {player_id}", team_id=team_id)
+    row = {
+        "game_id": game_id or f"g-{player_id}-{game_date}-{team_id}",
+        "player_id": player_id,
+        "team_id": team_id,
+        "opponent_team_id": opp_id,
+        "game_date": game_date,
+    }
+    row.update(stats)
+    db.upsert_player_game(row)
+
+
+def test_upsert_player_game_updates_all_box_columns(db):
+    db.upsert_team(100, "T100")
+    db.upsert_team(200, "O200")
+    db.upsert_player(7, "Test Player", team_id=100)
+    base = {
+        "team_id": 100,
+        "opponent_team_id": 200,
+        "season_id": "22025",
+        "matchup": "T100 @ O200",
+        "is_home": 0,
+        "wl": "W",
+        "minutes": 30,
+        "pts": 20,
+        "fgm": 8,
+        "fga": 15,
+        "stl": 1,
+        "blk": 0,
+        "tov": 2,
+        "pf": 3,
+        "plus_minus": 5.0,
+        "touches": 61.0,
+    }
+    db.upsert_player_game(
+        {**base, "game_id": "g1", "player_id": 7, "game_date": "2025-10-22"}
+    )
+
+    refreshed = {
+        **base,
+        "game_id": "g1",
+        "player_id": 7,
+        "game_date": "2025-10-22",
+        "pts": 35,
+        "stl": 4,
+        "blk": 2,
+        "tov": 5,
+        "pf": 1,
+        "plus_minus": -3.0,
+        "wl": "L",
+    }
+    refreshed.pop("touches")  # tracking feed absent -> keep prior value
+    db.upsert_player_game(refreshed)
+
+    row = db.query_one("SELECT * FROM fact_player_games WHERE game_id = 'g1'")
+    assert row["pts"] == 35
+    assert row["stl"] == 4
+    assert row["blk"] == 2
+    assert row["tov"] == 5
+    assert row["pf"] == 1
+    assert row["plus_minus"] == -3.0
+    assert row["wl"] == "L"
+    assert row["season_id"] == "22025"
+    assert row["touches"] == 61.0  # COALESCE preserved the tracked value
+
+
+def test_upsert_team_defense_updates_opp_columns(db):
+    db.upsert_team(100, "T100")
+    row = {
+        "team_id": 100,
+        "snapshot_date": "2025-10-21",
+        "def_rating": 110.0,
+        "opp_pts": 105.0,
+        "opp_reb": 40.0,
+        "opp_ast": 24.0,
+        "opp_fg3m": 12.0,
+        "paint_pts_rank": 5,
+    }
+    db.upsert_team_defense(row)
+    db.upsert_team_defense(
+        {
+            **row,
+            "opp_pts": 120.0,
+            "opp_reb": 48.5,
+            "paint_pts_rank": 28,
+            "season_id": "22025",
+        }
+    )
+    snap = db.query_one("SELECT * FROM fact_team_defense_daily WHERE team_id = 100")
+    assert snap["opp_pts"] == 120.0
+    assert snap["opp_reb"] == 48.5
+    assert snap["paint_pts_rank"] == 28
+    assert snap["season_id"] == "22025"
+
+
+# --- incremental watermarks ---------------------------------------------------
+
+
+def test_latest_game_date_watermark(db):
+    _seed_game(db, 7, "2025-04-10", 100, 200)  # prior-season tail
+    _seed_game(db, 7, "2025-10-20", 100, 200)
+    _seed_game(db, 7, "2025-10-22", 100, 200)
+    ingestion = PlayerGameLogIngestion(db)
+
+    assert ingestion.latest_game_date() == "2025-10-22"
+    assert ingestion.latest_game_date("2025-10-21") == "2025-10-22"
+    assert ingestion.latest_game_date("2025-11-01") is None
+    # season label '2025-26' bounds to games on/after 2025-08-01
+    assert ingestion.latest_game_date("2025-26") == "2025-10-22"
+    assert nba_date_param("2025-10-22") == "10/22/2025"
+    assert nba_date_param(None) is None
+
+
+# --- zero-auth ESPN box-score fallback ----------------------------------------
+
+
+def _espn_scoreboard(event_id="4011", completed=True):
+    return {
+        "events": [
+            {
+                "id": event_id,
+                "status": {"type": {"completed": completed, "state": "post"}},
+                "competitions": [
+                    {
+                        "competitors": [
+                            {
+                                "homeAway": "home",
+                                "team": {"abbreviation": "LAL"},
+                                "score": "110",
+                                "winner": True,
+                            },
+                            {
+                                "homeAway": "away",
+                                "team": {"abbreviation": "DEN"},
+                                "score": "105",
+                                "winner": False,
+                            },
+                        ]
+                    }
+                ],
+            },
+            {  # not yet completed -> skipped
+                "id": "9999",
+                "status": {"type": {"completed": False, "state": "pre"}},
+                "competitions": [{"competitors": []}],
+            },
+        ]
+    }
+
+
+_ESPN_KEYS = [
+    "min",
+    "fg",
+    "3pt",
+    "ft",
+    "oreb",
+    "dreb",
+    "reb",
+    "ast",
+    "stl",
+    "blk",
+    "to",
+    "pf",
+    "+/-",
+    "pts",
+]
+
+
+def _espn_summary():
+    return {
+        "boxscore": {
+            "players": [
+                {
+                    "team": {"abbreviation": "DEN"},
+                    "statistics": [
+                        {
+                            "keys": _ESPN_KEYS,
+                            "athletes": [
+                                {
+                                    "athlete": {"displayName": "Nikola Jokic"},
+                                    "stats": [
+                                        "34:22",
+                                        "11-18",
+                                        "2-4",
+                                        "4-5",
+                                        "3",
+                                        "12",
+                                        "15",
+                                        "9",
+                                        "1",
+                                        "1",
+                                        "3",
+                                        "2",
+                                        "+8",
+                                        "28",
+                                    ],
+                                },
+                                {
+                                    "athlete": {"displayName": "Bench Warmer"},
+                                    "didNotPlay": True,
+                                    "stats": [],
+                                },
+                            ],
+                        }
+                    ],
+                },
+                {
+                    "team": {"abbreviation": "LAL"},
+                    "statistics": [
+                        {
+                            "keys": _ESPN_KEYS,
+                            "athletes": [
+                                {
+                                    "athlete": {"displayName": "LeBron James"},
+                                    "stats": [
+                                        "36:00",
+                                        "10-20",
+                                        "3-8",
+                                        "7-9",
+                                        "2",
+                                        "7",
+                                        "9",
+                                        "8",
+                                        "2",
+                                        "0",
+                                        "2",
+                                        "4",
+                                        "+5",
+                                        "30",
+                                    ],
+                                }
+                            ],
+                        }
+                    ],
+                },
+            ]
+        }
+    }
+
+
+def test_espn_boxscore_client_fallback(db):
+    session = _FakeSession([_espn_scoreboard(), _espn_summary()])
+    client = ESPNBoxScoreClient(session=session, sleep_fn=lambda s: None)
+
+    rows = client.fetch_missing_dates(["2025-10-22"])
+
+    assert len(session.calls) == 2  # scoreboard + one completed-event summary
+    assert "/scoreboard" in session.calls[0]["url"]
+    assert session.calls[0]["params"]["dates"] == "20251022"
+    assert "/summary" in session.calls[1]["url"]
+
+    assert len(rows) == 2  # DNP athlete skipped, non-completed event skipped
+    written = PlayerGameLogIngestion(db).ingest_rows(rows)
+    assert written == 2
+
+    jokic = db.query_one(
+        "SELECT g.* FROM fact_player_games g"
+        " JOIN dim_players p ON p.player_id = g.player_id"
+        " WHERE p.normalized_name = 'nikola jokic'"
+    )
+    assert jokic["pts"] == 28
+    assert jokic["fgm"] == 11 and jokic["fga"] == 18
+    assert jokic["fg3m"] == 2 and jokic["fg3a"] == 4
+    assert jokic["ftm"] == 4 and jokic["fta"] == 5
+    assert jokic["minutes"] == pytest.approx(34 + 22 / 60)
+    assert jokic["plus_minus"] == 8.0
+    assert jokic["tov"] == 3 and jokic["pf"] == 2
+    assert jokic["wl"] == "L"  # DEN lost 105-110
+    assert jokic["is_home"] == 0  # DEN @ LAL
+    assert jokic["opponent_team_id"] == db.team_id_for_abbr("LAL")
+
+    # home team block -> "LAL vs. DEN" so is_home/opponent resolve right
+    lebron = db.query_one(
+        "SELECT g.* FROM fact_player_games g"
+        " JOIN dim_players p ON p.player_id = g.player_id"
+        " WHERE p.normalized_name = 'lebron james'"
+    )
+    assert lebron["is_home"] == 1
+    assert lebron["wl"] == "W"
+    assert lebron["opponent_team_id"] == db.team_id_for_abbr("DEN")
+
+
+# --- local team-defense derivation (zero API calls) ---------------------------
+
+
+def _seed_dvp_game(db, pid, d, team_id, opp_id, game_id, position, **stats):
+    db.upsert_team(team_id, f"T{team_id}")
+    db.upsert_team(opp_id, f"O{opp_id}")
+    db.upsert_player(pid, f"Player {pid}", team_id=team_id, position=position)
+    _seed_game(db, pid, d, team_id, opp_id, game_id=game_id, **stats)
+
+
+def test_derive_from_games_overall_and_position_scopes(db):
+    dates = ["2025-10-01", "2025-10-03", "2025-10-05", "2025-10-07", "2025-10-09"]
+    for i, d in enumerate(dates):
+        _seed_dvp_game(
+            db,
+            11,
+            d,
+            100,
+            200,
+            f"ev{i}",
+            "PG",
+            pts=20,
+            reb=8,
+            ast=5,
+            fg3m=2,
+            fgm=8,
+            fga=14,
+            fg3a=6,
+            fta=4,
+            oreb=2,
+            tov=3,
+        )
+        _seed_dvp_game(
+            db,
+            12,
+            d,
+            100,
+            200,
+            f"ev{i}",
+            "C",
+            pts=10,
+            reb=4,
+            ast=3,
+            fg3m=1,
+            fgm=4,
+            fga=8,
+            fg3a=3,
+            fta=2,
+            oreb=1,
+            tov=2,
+        )
+        _seed_dvp_game(
+            db,
+            21,
+            d,
+            200,
+            100,
+            f"ev{i}",
+            "SF",
+            pts=15,
+            reb=6,
+            ast=4,
+            fg3m=3,
+            fgm=6,
+            fga=12,
+            fg3a=7,
+            fta=3,
+            oreb=1,
+            tov=4,
+        )
+
+    written = TeamDefenseIngestion(db).derive_from_games("2025-10-20")
+
+    snap = db.query_one(
+        "SELECT * FROM fact_team_defense_daily"
+        " WHERE team_id = 200 AND position_scope = 'ALL'"
+    )
+    assert snap["opp_pts"] == pytest.approx(30.0)  # 20 + 10 per game
+    assert snap["opp_reb"] == pytest.approx(12.0)
+    assert snap["opp_ast"] == pytest.approx(8.0)
+    assert snap["opp_fg3m"] == pytest.approx(3.0)
+    # paint pts allowed = 2 * (fgm - fg3m) = 2 * (12 - 3) = 18
+    assert snap["paint_pts_allowed"] == pytest.approx(18.0)
+    # softer than team 100 (which only allows 15 ppg) -> rank 2
+    assert snap["def_rating_rank"] == 2
+
+    pg = db.query_one(
+        "SELECT * FROM fact_team_defense_daily"
+        " WHERE team_id = 200 AND position_scope = 'PG'"
+    )
+    assert pg["opp_pts"] == pytest.approx(20.0)
+    g_scope = db.query_one(
+        "SELECT * FROM fact_team_defense_daily"
+        " WHERE team_id = 200 AND position_scope = 'G'"
+    )
+    assert g_scope["opp_pts"] == pytest.approx(20.0)
+    c_scope = db.query_one(
+        "SELECT * FROM fact_team_defense_daily"
+        " WHERE team_id = 200 AND position_scope = 'C'"
+    )
+    assert c_scope["opp_pts"] == pytest.approx(10.0)
+    assert written >= 2 + 5  # 2 ALL rows + G/F/C + PG/SF scoped rows
+
+
+def test_derive_from_games_season_fallback(db):
+    dates = ["2025-03-10", "2025-03-12", "2025-03-14"]
+    for i, d in enumerate(dates):
+        _seed_dvp_game(db, 31, d, 100, 200, f"old{i}", "SG", pts=18, fga=10)
+    # only 3 in-season games after 2025-08-01 -> falls back to all history
+    written = TeamDefenseIngestion(db).derive_from_games(
+        "2025-10-20", season_start="2025-08-01"
+    )
+    assert written >= 2
+    snap = db.query_one(
+        "SELECT * FROM fact_team_defense_daily"
+        " WHERE team_id = 200 AND position_scope = 'ALL'"
+    )
+    assert snap["opp_pts"] == pytest.approx(18.0)
+
+
+# --- daily refresh ingestion guards --------------------------------------------
+
+
+def test_ingest_nba_skips_seeded_and_same_day(db):
+    from src.publication.daily_refresh import _ingest_nba_and_defense
+
+    calls = []
+
+    def caller(endpoint, params):
+        calls.append((endpoint, params))
+        return {"LeagueGameLog": []}
+
+    nba = NBAStatsClient(endpoint_caller=caller, sleep_fn=lambda s: None)
+    _seed_game(db, 7, "2025-04-10", 100, 200)  # prior-season tail seeded
+    _seed_game(db, 7, "2025-10-24", 100, 200)  # current season thru yesterday
+
+    result = _ingest_nba_and_defense(db, "2025-10-25", nba)
+
+    assert result["prior_season_cached"] is True
+    assert result["game_log_cached"] is True
+    assert result["game_rows"] == 0
+    assert calls == []  # zero nba_api calls
+    assert result["defense_rows"] >= 1  # derived locally, zero API calls
+
+
+def test_ingest_nba_incremental_date_from(db):
+    from src.publication.daily_refresh import _ingest_nba_and_defense
+
+    calls = []
+
+    def caller(endpoint, params):
+        calls.append((endpoint, params))
+        return {"LeagueGameLog": []}
+
+    nba = NBAStatsClient(endpoint_caller=caller, sleep_fn=lambda s: None)
+    _seed_game(db, 7, "2025-04-10", 100, 200)
+    _seed_game(db, 7, "2025-10-20", 100, 200)
+
+    _ingest_nba_and_defense(db, "2025-10-25", nba)
+
+    league_calls = [c for c in calls if c[0] == "LeagueGameLog"]
+    assert len(league_calls) == 1  # prior tail skipped, one incremental call
+    assert league_calls[0][1]["date_from_nullable"] == "10/20/2025"
+
+
+def test_ingest_nba_falls_back_to_espn(db):
+    from src.publication.daily_refresh import _ingest_nba_and_defense
+
+    def failing(endpoint, params):
+        raise ConnectionError("simulated stats.nba.com block")
+
+    nba = NBAStatsClient(
+        max_retries=1, endpoint_caller=failing, sleep_fn=lambda s: None
+    )
+    _seed_game(db, 7, "2025-10-21", 100, 200)  # only missing 10-22
+    session = _FakeSession([_espn_scoreboard(), _espn_summary()])
+    espn = ESPNBoxScoreClient(session=session, sleep_fn=lambda s: None)
+
+    result = _ingest_nba_and_defense(db, "2025-10-23", nba, espn=espn)
+
+    assert "prior_season_error" in result  # prior tail fetch also failed
+    assert "nba_stats_error" in result
+    assert result["game_rows"] == 2  # ESPN backfilled the missing date
+    assert session.calls[0]["params"]["dates"] == "20251022"

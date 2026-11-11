@@ -1,8 +1,9 @@
 # Runbook: Model Retraining & Self-Calibration
 
 Prophit maintains model quality through two mechanisms:
-1. **Automated Bi-Weekly Self-Calibration (`src/evaluation/calibrate.py`):** Runs automatically inside `src/publication/daily_refresh.py` every 14 days to tune the EV threshold (`min_ev_pct`) and suppress underperforming stat markets (`suppressed_markets`) in SQLite (`model_settings` table).
-2. **Walk-Forward Model Validation (`src/models/`):** Evaluates Stage 1 (`MinutesModel`) and Stage 2 (`stat_models.py`) regressors on expanding leak-free time-series splits against naive baselines.
+1. **Automated Continuous Self-Calibration (`src/evaluation/calibrate.py`):** Runs automatically inside `src/publication/daily_refresh.py` (every 14 days or once 3+ new game dates have settled) to tune the EV threshold (`min_ev_pct`), Empirical-Bayes shrinkage (`prior_games`), Stage 1/2 ML blend weight (`ml_blend_weight`), DvP sensitivity (`dvp_weight`), Monte Carlo PMF weight (`mc_blend_weight`), and suppress underperforming stat markets (`suppressed_markets`) in SQLite (`model_settings` table).
+2. **Walk-Forward Model Validation (`src/models/`):** Evaluates Stage 1 (`MinutesModel`) and Stage 2 (`stat_models.py`) regressors — including 20+ box-score-derived advanced stats (`TS%`, `eFG%`, `FTr`, `3PAr`, `USG%`, `REB%`, `OREB%`, `DREB%`, `AST%`, `TOV%`, `Game Score`, `PIE`, `Pace`, `Position DvP`) — on expanding leak-free time-series splits against naive baselines.
+3. **Epic Implementation Spec:** See `docs/runbooks/RUNBOOK_ADVANCED_ML_EPIC.md` for the full specification of advanced features, ML slate integration, and zero-throttle ingestion.
 
 ---
 

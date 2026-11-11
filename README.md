@@ -1,6 +1,6 @@
 # Prophit
 
-Automated NBA player prop and milestone betting engine. Prophit ingests 100% free, zero-auth public data sources (`statpick.ai`, PrizePicks, Underdog Fantasy, and `nba_api` box scores/defensive metrics), computes leak-free pre-game features, projects discrete probability distributions ($P(X = k)$), identifies +EV plays, and prices alternative/milestone ladders (e.g., Bet365 alt lines). Output is a static, mobile-first dashboard deployed daily via GitHub Pages.
+Automated NBA player prop and milestone betting engine. Prophit ingests 100% free, zero-auth public data sources (`statpick.ai`, PrizePicks, Underdog Fantasy, incremental `nba_api` game logs with automatic ESPN zero-auth box-score fallback, and locally derived team/position DvP), computes 25+ leak-free pre-game advanced stats, runs Stage 1 (`MinutesModel`) & Stage 2 (`stat_models.py`) ML regressors blended with Stage 3 Negative Binomial + Monte Carlo probability distributions ($P(X = k)$), identifies +EV plays, and prices alternative/milestone ladders (e.g., Bet365 alt lines). Output is a static, mobile-first dashboard deployed daily via GitHub Pages.
 
 See `AGENTS.md` for universal agent rules and `PROPHIT_SPECIFICATION.md` for the full software requirements document.
 
@@ -36,12 +36,12 @@ node --test tests/test_dashboard.cjs   # Frontend UI regression suite (Node 18+)
 
 ## Repository Layout
 
-- `src/ingestion/` — Zero-auth consensus odds chain (`consensus_odds.py`), `nba_api` game logs & team defense (`nba_stats.py`), injury parser (`injuries.py`), and SQLite schema/persistence (`db.py`).
-- `src/features/` — Leak-free rolling windows (L3/L7/L20), EWMA (`halflife=3`), per-minute rates, usage volume, rest/B2B/3-in-4/altitude/blowout context, DvP percentiles (`feature_store.py`), and OUT teammate redistribution (`vacated_usage.py`).
-- `src/models/` — Stage 1 LightGBM Huber minutes regressor with Ridge fallback (`minutes_model.py`), Stage 2 stat-specific rate models (`LightGBMRateModel`, `NegativeBinomialRateModel`, `PoissonRateModel`, `ZIPRateModel` in `stat_models.py`), and Stage 3 Negative Binomial + Monte Carlo PMF engine (`distribution.py`).
+- `src/ingestion/` — Zero-auth consensus odds chain (`consensus_odds.py`), incremental `nba_api` game logs with zero-auth `ESPNBoxScoreClient` fallback & local overall/position DvP derivation (`nba_stats.py`), injury parser (`injuries.py`), and SQLite schema/persistence (`db.py`).
+- `src/features/` — Leak-free rolling windows (L3/L7/L20), EWMA (`halflife=3`), per-minute rates, 25+ box-score-derived advanced stats (`TS%`, `eFG%`, `FTr`, `3PAr`, on-floor `USG%`/`REB%`/`OREB%`/`DREB%`/`AST%`, `TOV%`, `Game Score`, `PIE`, `Pace`, volatility/CV), rest/B2B/3-in-4/altitude/blowout context, position-aware DvP percentiles (`feature_store.py`), and OUT teammate redistribution (`vacated_usage.py`).
+- `src/models/` — Stage 1 LightGBM Huber minutes regressor with Ridge fallback (`minutes_model.py`), Stage 2 stat-specific rate models (`LightGBMRateModel`, `NegativeBinomialRateModel`, `PoissonRateModel`, `ZIPRateModel` in `stat_models.py`) trained on base + advanced features, and Stage 3 Negative Binomial + Monte Carlo blended PMF engine (`distribution.py`).
 - `src/decision/` — American/decimal/implied odds conversions, push-aware +EV evaluator (`ev_calculator.py`), and even-integer milestone ladder pricing (`milestone_engine.py`).
-- `src/evaluation/` — Trailing-mean proxy backtester (`backtest.py`), bi-weekly self-calibration loop (`calibrate.py`), and settled play grading / model record tracker (`record.py`).
-- `src/publication/` — End-to-end slate generator & static bundle builder (`static_builder.py`), daily pipeline runner (`daily_refresh.py`), and `gh-pages` worktree publisher (`publisher.py`).
+- `src/evaluation/` — Trailing-mean proxy backtester (`backtest.py`), continuous multi-parameter self-calibration loop (`calibrate.py`), and settled play grading / model record tracker (`record.py`).
+- `src/publication/` — End-to-end ML + advanced-stat slate generator & static bundle builder (`static_builder.py`), daily pipeline runner (`daily_refresh.py`), and `gh-pages` worktree publisher (`publisher.py`).
 - `web/` — Source vanilla HTML/CSS/JS mobile dashboard (`index.html`, `styles.css`, `app.js`).
 - `site/` — Built static artifact bundle (`daily_slate.json` + copied `web/` assets) deployed to GitHub Pages.
 - `docs/` — System architecture (`ARCHITECTURE.md`), model specification (`MODEL_SPEC.md`), and operational runbooks (`docs/runbooks/`).

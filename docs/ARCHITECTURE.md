@@ -8,7 +8,10 @@ Prophit is structured as a six-module offline-testable Python pipeline paired wi
 [1. Ingestion (src/ingestion/)]
   ├─ ConsensusOddsIngestion: statpick.ai (primary + per-player prop pages)
   │    -> PrizePicks -> Underdog fallback (100% free, zero-auth)
-  ├─ NBAStatsClient: LeagueGameLog (current + prior season tail) & LeagueDashPtTeamDefend
+  ├─ NBAStatsClient & ESPNBoxScoreClient: Incremental LeagueGameLog (date_from watermark,
+  │    skips seeded prior season & same-day cache) -> zero-auth ESPN box-score fallback on throttle
+  ├─ TeamDefenseIngestion.derive_from_games: Derives overall (ALL) + position-scoped (G/F/C, PG..C)
+  │    DvP & defensive ratings locally from fact_player_games (zero LeagueDashPtTeamDefend calls)
   └─ Injuries: parse_injury_entries()
          │
          ▼
@@ -19,24 +22,31 @@ Prophit is structured as a six-module offline-testable Python pipeline paired wi
          │
          ▼
 [3. Leak-Free Feature Store (src/features/)]
-  ├─ FeatureStore: L3/L7/L20 rolling means, EWMA (halflife=3.0), per-min rates (L20),
-  │    usage_volume (FGA + 0.44*FTA + TOV), rest/B2B/3-in-4, altitude, blowout_index, DvP percentile
+  ├─ FeatureStore: L3/L7/L20 rolling means, EWMA (halflife=3.0), per-min rates (L20 & EWMA),
+  │    shooting efficiency (TS%, eFG%, FTr, 3PAr, TS% regression delta), true on-floor shares
+  │    (USG%, REB%, OREB%, DREB%, AST%, TOV%, AST/TOV, role expansion delta), composite impact
+  │    (Hollinger Game Score, PIE, minutes std, stat CV, foul rate/36, +/- per min), team/expected
+  │    pace factor, rest/B2B/3-in-4, altitude, blowout_index, position-aware DvP percentile
   └─ VacatedUsageEngine: redistributes OUT teammates' minutes & usage by active share
          │
          ▼
-[4. Modeling & Distribution Engine (src/models/)]
-  ├─ Stage 1 (minutes_model.py): LightGBM Huber regressor (Ridge fallback)
+[4. Modeling & Distribution Engine (src/models/ & src/publication/static_builder.py)]
+  ├─ Stage 1 (minutes_model.py): LightGBM Huber regressor (Ridge fallback) over base + advanced features
   ├─ Stage 2 (stat_models.py): LightGBM (pts), NegBin GLM (reb), Poisson GLM (ast), ZIP (fg3m)
-  ├─ Slate Inference (static_builder.py): EWMA/rolling minutes × per-min rate + Empirical-Bayes
-  │    shrinkage toward consensus line (prior_games=6.0)
-  └─ Stage 3 (distribution.py): Discrete PMF P(X = k) for k in [0..60] via NegBin (MoM dispersion r)
-       and 10,000-trial Monte Carlo
+  │    with dynamic active advanced-feature selection
+  ├─ Slate Inference (static_builder.py): Lazy per-slate ML model fitting blended (ml_blend_weight)
+  │    with rolling rates × contextual multiplier (DvP, expected pace, TS% regression, role expansion,
+  │    schedule/rest, vacated usage) + Empirical-Bayes shrinkage toward consensus line (prior_games)
+  └─ Stage 3 (distribution.py): Discrete PMF P(X = k) for k in [0..60] via blended Negative Binomial
+       (MoM dispersion r) and 10,000-trial Monte Carlo (mc_blend_weight)
          │
          ▼
-[5. Decision & Self-Calibration (src/decision/ & src/evaluation/)]
+[5. Decision & Continuous Self-Calibration (src/decision/ & src/evaluation/)]
   ├─ EVCalculator (ev_calculator.py): push-aware P(Over), P(Under), P(Push), fair odds, EV%
   ├─ MilestoneEngine (milestone_engine.py): even-integer alt ladders when model_mean - line >= 2.0
-  ├─ Bi-Weekly Calibrator (calibrate.py): sweeps EV gates (±2% clamp) & suppresses losing markets
+  ├─ Continuous Calibrator (calibrate.py): runs every 14d or after 3+ settled game dates; sweeps
+  │    min_ev_pct (±2% clamp), prior_games (±2 clamp), ml_blend_weight, dvp_weight, mc_blend_weight,
+  │    and suppresses/unsuppresses markets by graded ROI
   └─ Model Record (record.py) & Proxy Backtest (backtest.py): settles past plays & grades W-L-P / ROI
          │
          ▼
